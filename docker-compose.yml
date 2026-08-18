@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: exchange-ops-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: exchange_ops
+      POSTGRES_USER: exchange_ops
+      POSTGRES_PASSWORD: exchange_ops
+    ports:
+      - "5432:5432"
+    volumes:
+      - exchange_ops_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U exchange_ops -d exchange_ops"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  exchange_ops_postgres_data:

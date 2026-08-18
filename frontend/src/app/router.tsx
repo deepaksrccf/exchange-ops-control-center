@@ -1,7 +1,9 @@
 import { createBrowserRouter } from "react-router-dom";
 
 import { AppShell } from "../components/layout/AppShell";
+import { OperationsOverviewPage } from "../pages/OperationsOverviewPage";
 import { PlaceholderPage } from "../pages/PlaceholderPage";
+import { SystemPage } from "../pages/SystemPage";
 
 export const router = createBrowserRouter([
   {
@@ -9,12 +11,7 @@ export const router = createBrowserRouter([
     children: [
       {
         path: "/",
-        element: (
-          <PlaceholderPage
-            title="Operations Overview"
-            description="Monitor alerts, incidents, event volume, latency, and venue health."
-          />
-        ),
+        element: <OperationsOverviewPage />,
       },
       {
         path: "/events",
@@ -39,7 +36,7 @@ export const router = createBrowserRouter([
         element: (
           <PlaceholderPage
             title="Alert Investigation"
-            description="Review a triggering event, alert explanation, and related activity."
+            description="Review a triggering event and related activity."
           />
         ),
       },
@@ -48,7 +45,7 @@ export const router = createBrowserRouter([
         element: (
           <PlaceholderPage
             title="Incident Management"
-            description="Assign, investigate, track, and resolve operational incidents."
+            description="Assign and resolve operational incidents."
           />
         ),
       },
@@ -57,7 +54,7 @@ export const router = createBrowserRouter([
         element: (
           <PlaceholderPage
             title="Incident Details"
-            description="Review notes, status changes, resolution details, and timeline events."
+            description="Review notes and incident timeline events."
           />
         ),
       },
@@ -66,18 +63,13 @@ export const router = createBrowserRouter([
         element: (
           <PlaceholderPage
             title="Operations Analytics"
-            description="Analyze event volume, alerts, processing latency, and incident trends."
+            description="Analyze event, alert, latency, and incident trends."
           />
         ),
       },
       {
         path: "/system",
-        element: (
-          <PlaceholderPage
-            title="System Administration"
-            description="Review venue status, API health, and alert-rule configuration."
-          />
-        ),
+        element: <SystemPage />,
       },
       {
         path: "*",
