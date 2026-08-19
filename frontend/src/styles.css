@@ -1576,3 +1576,85 @@ textarea:focus-visible {
     padding: 0;
   }
 }
+
+/* Functional Alert Queue */
+
+.alert-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.alert-filter-grid {
+  display: grid;
+  grid-template-columns:
+    minmax(150px, 1fr)
+    minmax(150px, 1fr)
+    minmax(180px, 1.2fr)
+    110px
+    auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.alert-filter-grid label {
+  display: grid;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.alert-filter-grid input,
+.alert-filter-grid select {
+  min-height: 40px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--surface-secondary);
+  color: var(--text);
+  padding: 7px 10px;
+}
+
+.alert-table {
+  min-width: 1320px;
+}
+
+.alert-table td:nth-child(3) {
+  min-width: 260px;
+  white-space: normal;
+}
+
+.alert-row-actions {
+  display: flex;
+  gap: 7px;
+}
+
+.operation-feedback {
+  margin: 14px 0 0;
+  border-left: 3px solid var(--info);
+  background: var(--info-background);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  padding: 9px 12px;
+}
+
+@media (max-width: 1000px) {
+  .alert-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .alert-header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .alert-filter-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -4,6 +4,8 @@ import { AppShell } from "../components/layout/AppShell";
 import { OperationsOverviewPage } from "../pages/OperationsOverviewPage";
 import { PlaceholderPage } from "../pages/PlaceholderPage";
 import { SystemPage } from "../pages/SystemPage";
+import { EventMonitorPage } from "../pages/EventMonitorPage";
+import { AlertQueuePage } from "../pages/AlertQueuePage";
 
 export const router = createBrowserRouter([
   {
@@ -15,21 +17,11 @@ export const router = createBrowserRouter([
       },
       {
         path: "/events",
-        element: (
-          <PlaceholderPage
-            title="Event Monitor"
-            description="Inspect synthetic exchange events using searchable and filterable data."
-          />
-        ),
+        element: <EventMonitorPage />,
       },
       {
         path: "/alerts",
-        element: (
-          <PlaceholderPage
-            title="Alert Queue"
-            description="Review operational alerts and begin investigations."
-          />
-        ),
+        element: <AlertQueuePage />,
       },
       {
         path: "/alerts/:id",
