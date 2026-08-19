@@ -7,6 +7,8 @@ import { SystemPage } from "../pages/SystemPage";
 import { EventMonitorPage } from "../pages/EventMonitorPage";
 import { AlertQueuePage } from "../pages/AlertQueuePage";
 import { AlertDetailPage } from "../pages/AlertDetailPage";
+import { IncidentManagementPage } from "../pages/IncidentManagementPage";
+import { IncidentDetailPage } from "../pages/IncidentDetailPage";
 
 export const router = createBrowserRouter([
   {
@@ -30,21 +32,11 @@ export const router = createBrowserRouter([
       },
       {
         path: "/incidents",
-        element: (
-          <PlaceholderPage
-            title="Incident Management"
-            description="Assign and resolve operational incidents."
-          />
-        ),
+        element: <IncidentManagementPage />,
       },
       {
         path: "/incidents/:id",
-        element: (
-          <PlaceholderPage
-            title="Incident Details"
-            description="Review notes and incident timeline events."
-          />
-        ),
+        element: <IncidentDetailPage />,
       },
       {
         path: "/analytics",
