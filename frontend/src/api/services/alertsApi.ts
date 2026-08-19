@@ -4,6 +4,8 @@ import type {
   Alert,
   AlertPage,
   AlertQueryParameters,
+  CreatedIncident,
+  CreateIncidentRequest,
 } from "../../types/alerts";
 
 export async function getAlerts(
@@ -18,6 +20,7 @@ export async function getAlerts(
 
 export async function getAlert(id: string): Promise<Alert> {
   const response = await apiClient.get<Alert>(`/alerts/${id}`);
+
   return response.data;
 }
 
@@ -27,6 +30,18 @@ export async function acknowledgeAlert(
 ): Promise<Alert> {
   const response = await apiClient.post<Alert>(
     `/alerts/${id}/acknowledge`,
+    request,
+  );
+
+  return response.data;
+}
+
+export async function createIncidentFromAlert(
+  alertId: string,
+  request: CreateIncidentRequest,
+): Promise<CreatedIncident> {
+  const response = await apiClient.post<CreatedIncident>(
+    `/alerts/${alertId}/create-incident`,
     request,
   );
 

@@ -6,6 +6,7 @@ import { PlaceholderPage } from "../pages/PlaceholderPage";
 import { SystemPage } from "../pages/SystemPage";
 import { EventMonitorPage } from "../pages/EventMonitorPage";
 import { AlertQueuePage } from "../pages/AlertQueuePage";
+import { AlertDetailPage } from "../pages/AlertDetailPage";
 
 export const router = createBrowserRouter([
   {
@@ -25,12 +26,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "/alerts/:id",
-        element: (
-          <PlaceholderPage
-            title="Alert Investigation"
-            description="Review a triggering event and related activity."
-          />
-        ),
+        element: <AlertDetailPage />,
       },
       {
         path: "/incidents",

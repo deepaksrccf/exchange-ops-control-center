@@ -7,12 +7,14 @@ import {
 
 import {
   acknowledgeAlert,
+  createIncidentFromAlert,
   getAlert,
   getAlerts,
 } from "../api/services/alertsApi";
 import type {
   AcknowledgeAlertRequest,
   AlertQueryParameters,
+  CreateIncidentRequest,
 } from "../types/alerts";
 
 export function useAlertsQuery(parameters: AlertQueryParameters) {
@@ -52,6 +54,37 @@ export function useAcknowledgeAlert() {
         }),
         queryClient.invalidateQueries({
           queryKey: ["alert", variables.id],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["metrics-summary"],
+        }),
+      ]);
+    },
+  });
+}
+
+export function useCreateIncidentFromAlert() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      alertId,
+      request,
+    }: {
+      alertId: string;
+      request: CreateIncidentRequest;
+    }) => createIncidentFromAlert(alertId, request),
+
+    onSuccess: async (_, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["alerts"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["alert", variables.alertId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["incidents"],
         }),
         queryClient.invalidateQueries({
           queryKey: ["metrics-summary"],
