@@ -1985,3 +1985,130 @@ textarea:focus-visible {
     gap: 2px;
   }
 }
+
+/* Functional Operations Analytics */
+
+.analytics-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(150px, 1fr));
+  gap: 13px;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.analytics-chart {
+  width: 100%;
+  height: 320px;
+  color: var(--text-secondary);
+}
+
+.analytics-chart .recharts-cartesian-grid line {
+  stroke: var(--border-subtle);
+}
+
+.analytics-chart .recharts-cartesian-axis-line,
+.analytics-chart .recharts-cartesian-axis-tick-line {
+  stroke: var(--border);
+}
+
+.analytics-chart .recharts-text {
+  fill: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.analytics-chart .recharts-legend-item-text {
+  color: var(--text-secondary) !important;
+  font-size: 0.76rem;
+}
+
+.analytics-tooltip {
+  display: grid;
+  gap: 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-medium);
+  color: var(--text-secondary);
+  padding: 8px 10px;
+}
+
+.analytics-tooltip strong {
+  color: var(--text);
+  font-size: 0.76rem;
+}
+
+.analytics-tooltip span {
+  font-variant-numeric: tabular-nums;
+}
+
+.analytics-empty {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.analytics-scope {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.analytics-scope article {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-medium);
+  background: var(--surface-secondary);
+  color: var(--primary);
+  padding: 14px;
+}
+
+.analytics-scope strong,
+.analytics-scope span {
+  display: block;
+}
+
+.analytics-scope strong {
+  color: var(--text);
+  font-size: 0.8rem;
+}
+
+.analytics-scope span {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+@media (max-width: 1200px) {
+  .analytics-metric-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .analytics-scope {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 800px) {
+  .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .analytics-metric-grid,
+  .analytics-scope {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-chart {
+    height: 280px;
+  }
+}

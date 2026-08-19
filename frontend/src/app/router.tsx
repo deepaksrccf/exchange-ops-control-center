@@ -9,6 +9,7 @@ import { AlertQueuePage } from "../pages/AlertQueuePage";
 import { AlertDetailPage } from "../pages/AlertDetailPage";
 import { IncidentManagementPage } from "../pages/IncidentManagementPage";
 import { IncidentDetailPage } from "../pages/IncidentDetailPage";
+import { OperationsAnalyticsPage } from "../pages/OperationsAnalyticsPage";
 
 export const router = createBrowserRouter([
   {
@@ -40,12 +41,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "/analytics",
-        element: (
-          <PlaceholderPage
-            title="Operations Analytics"
-            description="Analyze event, alert, latency, and incident trends."
-          />
-        ),
+        element: <OperationsAnalyticsPage />,
       },
       {
         path: "/system",
