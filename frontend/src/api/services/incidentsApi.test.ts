@@ -4,6 +4,7 @@ import {
   getIncidents,
   getIncident,
   updateIncident,
+  getIncidentNotes,
   getIncidentTimeline,
   createIncidentNote,
 } from "./incidentsApi";
@@ -200,6 +201,27 @@ describe("incidentsApi", () => {
         "/incidents/incident-1",
         updateRequest,
       );
+    });
+  });
+
+  describe("getIncidentNotes", () => {
+    it("should fetch notes for an incident", async () => {
+      const mockGet = vi.fn().mockResolvedValue({ data: [mockNote] });
+      vi.mocked(apiClient).get = mockGet;
+
+      const result = await getIncidentNotes("incident-1");
+
+      expect(mockGet).toHaveBeenCalledWith("/incidents/incident-1/notes");
+      expect(result).toEqual([mockNote]);
+    });
+
+    it("should handle an incident with no notes", async () => {
+      const mockGet = vi.fn().mockResolvedValue({ data: [] });
+      vi.mocked(apiClient).get = mockGet;
+
+      const result = await getIncidentNotes("incident-1");
+
+      expect(result).toEqual([]);
     });
   });
 

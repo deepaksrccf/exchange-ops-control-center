@@ -32,7 +32,7 @@ export function AlertDetailPage() {
   const [operator, setOperator] = useState("ops.deepak");
   const [createdBy, setCreatedBy] = useState("ops.deepak");
   const [owner, setOwner] = useState("ops.deepak");
-  const [severity, setSeverity] = useState<IncidentSeverity>("HIGH");
+  const [severity, setSeverity] = useState<IncidentSeverity>("SEV2");
   const [feedback, setFeedback] = useState("");
 
   if (alertQuery.isPending) {

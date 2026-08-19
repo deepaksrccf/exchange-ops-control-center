@@ -3,91 +3,50 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
-import { queryClient } from "../api/queryClient";
 import {
   useIncidentsQuery,
   useIncidentQuery,
+  useIncidentNotesQuery,
   useIncidentTimelineQuery,
   useUpdateIncident,
   useCreateIncidentNote,
 } from "../hooks/useIncidents";
 import * as incidentsApi from "../api/services/incidentsApi";
-import type {
-  Incident,
-  IncidentPage,
-  IncidentEvent,
-  IncidentNote,
-} from "../types/incidents";
+import {
+  buildIncident,
+  buildIncidentEvent,
+  buildIncidentNote,
+  buildIncidentPage,
+  createTestQueryClient,
+} from "../test/incidentFixtures";
 
 // Mock the API service
 vi.mock("../api/services/incidentsApi");
 
-const mockIncidents: Incident[] = [
-  {
-    id: "incident-1",
-    incidentNumber: "INC-001",
-    title: "Test incident",
-    description: "Test description",
-    severity: "SEV1",
-    status: "OPEN",
-    owner: undefined,
-    createdAt: "2026-01-15T10:30:00Z",
-    updatedAt: "2026-01-15T10:30:00Z",
-  },
-];
+const mockIncident = buildIncident({ id: "incident-1" });
+const mockPage = buildIncidentPage({ content: [mockIncident] });
+const mockTimeline = [buildIncidentEvent({ incidentId: "incident-1" })];
+const mockNote = buildIncidentNote({ incidentId: "incident-1" });
 
-const mockPage: IncidentPage = {
-  content: mockIncidents,
-  page: 0,
-  size: 25,
-  totalElements: 1,
-  totalPages: 1,
-  first: true,
-  last: true,
-};
+function renderWithClient<T>(callback: () => T) {
+  const queryClient = createTestQueryClient();
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
 
-const mockIncident: Incident = mockIncidents[0];
+  return { ...renderHook(callback, { wrapper }), queryClient };
+}
 
-const mockTimeline: IncidentEvent[] = [
-  {
-    id: "event-1",
-    incidentId: "incident-1",
-    eventType: "CREATED",
-    actor: "ops.deepak",
-    description: "Incident created",
-    createdAt: "2026-01-15T10:30:00Z",
-  },
-];
-
-const mockNote: IncidentNote = {
-  id: "note-1",
-  incidentId: "incident-1",
-  author: "ops.deepak",
-  content: "Test note",
-  createdAt: "2026-01-15T10:35:00Z",
-};
-
-const wrapper = ({ children }: { children: ReactNode }) => (
-  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-);
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 describe("useIncidentsQuery", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    queryClient.clear();
-  });
-
   it("should fetch paginated incidents", async () => {
     vi.mocked(incidentsApi.getIncidents).mockResolvedValue(mockPage);
 
-    const { result } = renderHook(
-      () =>
-        useIncidentsQuery({
-          page: 0,
-          size: 25,
-          sort: "createdAt,desc",
-        }),
-      { wrapper },
+    const { result } = renderWithClient(() =>
+      useIncidentsQuery({ page: 0, size: 25, sort: "createdAt,desc" }),
     );
 
     await waitFor(() => {
@@ -101,17 +60,15 @@ describe("useIncidentsQuery", () => {
   it("should apply filters", async () => {
     vi.mocked(incidentsApi.getIncidents).mockResolvedValue(mockPage);
 
-    renderHook(
-      () =>
-        useIncidentsQuery({
-          page: 0,
-          size: 25,
-          sort: "createdAt,desc",
-          status: "OPEN",
-          severity: "SEV1",
-          owner: "ops.deepak",
-        }),
-      { wrapper },
+    renderWithClient(() =>
+      useIncidentsQuery({
+        page: 0,
+        size: 25,
+        sort: "createdAt,desc",
+        status: "OPEN",
+        severity: "SEV1",
+        owner: "ops.deepak",
+      }),
     );
 
     await waitFor(() => {
@@ -129,22 +86,13 @@ describe("useIncidentsQuery", () => {
     const error = new Error("API error");
     vi.mocked(incidentsApi.getIncidents).mockRejectedValue(error);
 
-    const { result } = renderHook(
-      () =>
-        useIncidentsQuery({
-          page: 0,
-          size: 25,
-          sort: "createdAt,desc",
-        }),
-      { wrapper },
+    const { result } = renderWithClient(() =>
+      useIncidentsQuery({ page: 0, size: 25, sort: "createdAt,desc" }),
     );
 
-    await waitFor(
-      () => {
-        expect(result.current.isError).toBe(true);
-      },
-      { timeout: 3000 },
-    );
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
 
     expect(result.current.error).toBe(error);
   });
@@ -152,24 +100,21 @@ describe("useIncidentsQuery", () => {
   it("should maintain previous data during pagination", async () => {
     vi.mocked(incidentsApi.getIncidents).mockResolvedValue(mockPage);
 
+    const queryClient = createTestQueryClient();
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+
     const { result, rerender } = renderHook(
-      ({ page }) =>
-        useIncidentsQuery({
-          page,
-          size: 25,
-          sort: "createdAt,desc",
-        }),
-      {
-        wrapper,
-        initialProps: { page: 0 },
-      },
+      ({ page }: { page: number }) =>
+        useIncidentsQuery({ page, size: 25, sort: "createdAt,desc" }),
+      { wrapper, initialProps: { page: 0 } },
     );
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    // Change page
     rerender({ page: 1 });
 
     // Old data should still be available while new data loads
@@ -178,17 +123,10 @@ describe("useIncidentsQuery", () => {
 });
 
 describe("useIncidentQuery", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    queryClient.clear();
-  });
-
   it("should fetch single incident", async () => {
     vi.mocked(incidentsApi.getIncident).mockResolvedValue(mockIncident);
 
-    const { result } = renderHook(() => useIncidentQuery("incident-1"), {
-      wrapper,
-    });
+    const { result } = renderWithClient(() => useIncidentQuery("incident-1"));
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
@@ -200,9 +138,7 @@ describe("useIncidentQuery", () => {
   it("should not fetch when id is undefined", () => {
     vi.mocked(incidentsApi.getIncident).mockResolvedValue(mockIncident);
 
-    const { result } = renderHook(() => useIncidentQuery(undefined), {
-      wrapper,
-    });
+    const { result } = renderWithClient(() => useIncidentQuery(undefined));
 
     expect(result.current.fetchStatus).toBe("idle");
     expect(vi.mocked(incidentsApi.getIncident)).not.toHaveBeenCalled();
@@ -211,13 +147,15 @@ describe("useIncidentQuery", () => {
   it("should fetch when id changes from undefined to defined", async () => {
     vi.mocked(incidentsApi.getIncident).mockResolvedValue(mockIncident);
 
-    type RenderHookProps = { id: string | undefined };
+    const queryClient = createTestQueryClient();
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+
+    type Props = { id: string | undefined };
     const { result, rerender } = renderHook(
-      ({ id }: RenderHookProps) => useIncidentQuery(id),
-      {
-        wrapper,
-        initialProps: { id: undefined } as RenderHookProps,
-      },
+      ({ id }: Props) => useIncidentQuery(id),
+      { wrapper, initialProps: { id: undefined } as Props },
     );
 
     expect(result.current.fetchStatus).toBe("idle");
@@ -235,33 +173,47 @@ describe("useIncidentQuery", () => {
     const error = new Error("Not found");
     vi.mocked(incidentsApi.getIncident).mockRejectedValue(error);
 
-    const { result } = renderHook(() => useIncidentQuery("incident-1"), {
-      wrapper,
-    });
+    const { result } = renderWithClient(() => useIncidentQuery("incident-1"));
 
-    await waitFor(
-      () => {
-        expect(result.current.isError).toBe(true);
-      },
-      { timeout: 3000 },
-    );
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
 
     expect(result.current.error).toBe(error);
   });
 });
 
-describe("useIncidentTimelineQuery", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    queryClient.clear();
+describe("useIncidentNotesQuery", () => {
+  it("should fetch incident notes", async () => {
+    vi.mocked(incidentsApi.getIncidentNotes).mockResolvedValue([mockNote]);
+
+    const { result } = renderWithClient(() =>
+      useIncidentNotesQuery("incident-1"),
+    );
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(result.current.data).toEqual([mockNote]);
   });
 
+  it("should not fetch when id is undefined", () => {
+    vi.mocked(incidentsApi.getIncidentNotes).mockResolvedValue([mockNote]);
+
+    const { result } = renderWithClient(() => useIncidentNotesQuery(undefined));
+
+    expect(result.current.fetchStatus).toBe("idle");
+    expect(vi.mocked(incidentsApi.getIncidentNotes)).not.toHaveBeenCalled();
+  });
+});
+
+describe("useIncidentTimelineQuery", () => {
   it("should fetch incident timeline", async () => {
     vi.mocked(incidentsApi.getIncidentTimeline).mockResolvedValue(mockTimeline);
 
-    const { result } = renderHook(
-      () => useIncidentTimelineQuery("incident-1"),
-      { wrapper },
+    const { result } = renderWithClient(() =>
+      useIncidentTimelineQuery("incident-1"),
     );
 
     await waitFor(() => {
@@ -274,9 +226,9 @@ describe("useIncidentTimelineQuery", () => {
   it("should not fetch when id is undefined", () => {
     vi.mocked(incidentsApi.getIncidentTimeline).mockResolvedValue(mockTimeline);
 
-    const { result } = renderHook(() => useIncidentTimelineQuery(undefined), {
-      wrapper,
-    });
+    const { result } = renderWithClient(() =>
+      useIncidentTimelineQuery(undefined),
+    );
 
     expect(result.current.fetchStatus).toBe("idle");
     expect(vi.mocked(incidentsApi.getIncidentTimeline)).not.toHaveBeenCalled();
@@ -284,26 +236,15 @@ describe("useIncidentTimelineQuery", () => {
 });
 
 describe("useUpdateIncident", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    queryClient.clear();
-  });
-
   it("should update incident", async () => {
-    const updatedIncident = {
-      ...mockIncident,
-      status: "INVESTIGATING" as const,
-    };
+    const updatedIncident = buildIncident({ status: "INVESTIGATING" });
     vi.mocked(incidentsApi.updateIncident).mockResolvedValue(updatedIncident);
 
-    const { result } = renderHook(() => useUpdateIncident(), { wrapper });
+    const { result } = renderWithClient(() => useUpdateIncident());
 
     result.current.mutate({
       id: "incident-1",
-      request: {
-        status: "INVESTIGATING",
-        actor: "ops.deepak",
-      },
+      request: { status: "INVESTIGATING", actor: "ops.deepak" },
     });
 
     await waitFor(() => {
@@ -321,16 +262,13 @@ describe("useUpdateIncident", () => {
 
   it("should invalidate related queries on success", async () => {
     vi.mocked(incidentsApi.updateIncident).mockResolvedValue(mockIncident);
-    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
 
-    const { result } = renderHook(() => useUpdateIncident(), { wrapper });
+    const { result, queryClient } = renderWithClient(() => useUpdateIncident());
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
 
     result.current.mutate({
       id: "incident-1",
-      request: {
-        status: "INVESTIGATING",
-        actor: "ops.deepak",
-      },
+      request: { status: "INVESTIGATING", actor: "ops.deepak" },
     });
 
     await waitFor(() => {
@@ -348,20 +286,23 @@ describe("useUpdateIncident", () => {
         queryKey: ["incident-timeline", "incident-1"],
       }),
     );
+    expect(invalidateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: ["alerts"] }),
+    );
+    expect(invalidateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: ["metrics-summary"] }),
+    );
   });
 
   it("should handle API errors", async () => {
     const error = new Error("Update failed");
     vi.mocked(incidentsApi.updateIncident).mockRejectedValue(error);
 
-    const { result } = renderHook(() => useUpdateIncident(), { wrapper });
+    const { result } = renderWithClient(() => useUpdateIncident());
 
     result.current.mutate({
       id: "incident-1",
-      request: {
-        status: "INVESTIGATING",
-        actor: "ops.deepak",
-      },
+      request: { status: "INVESTIGATING", actor: "ops.deepak" },
     });
 
     await waitFor(() => {
@@ -373,22 +314,14 @@ describe("useUpdateIncident", () => {
 });
 
 describe("useCreateIncidentNote", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    queryClient.clear();
-  });
-
   it("should create incident note", async () => {
     vi.mocked(incidentsApi.createIncidentNote).mockResolvedValue(mockNote);
 
-    const { result } = renderHook(() => useCreateIncidentNote(), { wrapper });
+    const { result } = renderWithClient(() => useCreateIncidentNote());
 
     result.current.mutate({
-      incidentId: "incident-1",
-      request: {
-        author: "ops.deepak",
-        content: "Test note",
-      },
+      id: "incident-1",
+      request: { author: "ops.deepak", content: "Test note" },
     });
 
     await waitFor(() => {
@@ -397,25 +330,21 @@ describe("useCreateIncidentNote", () => {
 
     expect(vi.mocked(incidentsApi.createIncidentNote)).toHaveBeenCalledWith(
       "incident-1",
-      expect.objectContaining({
-        author: "ops.deepak",
-        content: "Test note",
-      }),
+      expect.objectContaining({ author: "ops.deepak", content: "Test note" }),
     );
   });
 
   it("should invalidate related queries on success", async () => {
     vi.mocked(incidentsApi.createIncidentNote).mockResolvedValue(mockNote);
+
+    const { result, queryClient } = renderWithClient(() =>
+      useCreateIncidentNote(),
+    );
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
 
-    const { result } = renderHook(() => useCreateIncidentNote(), { wrapper });
-
     result.current.mutate({
-      incidentId: "incident-1",
-      request: {
-        author: "ops.deepak",
-        content: "Test note",
-      },
+      id: "incident-1",
+      request: { author: "ops.deepak", content: "Test note" },
     });
 
     await waitFor(() => {
@@ -426,9 +355,30 @@ describe("useCreateIncidentNote", () => {
       expect.objectContaining({ queryKey: ["incident", "incident-1"] }),
     );
     expect(invalidateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: ["incident-notes", "incident-1"] }),
+    );
+    expect(invalidateSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         queryKey: ["incident-timeline", "incident-1"],
       }),
     );
+  });
+
+  it("should handle API errors", async () => {
+    const error = new Error("Note creation failed");
+    vi.mocked(incidentsApi.createIncidentNote).mockRejectedValue(error);
+
+    const { result } = renderWithClient(() => useCreateIncidentNote());
+
+    result.current.mutate({
+      id: "incident-1",
+      request: { author: "ops.deepak", content: "Test note" },
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(result.current.error).toBe(error);
   });
 });

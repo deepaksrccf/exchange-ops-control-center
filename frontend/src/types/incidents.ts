@@ -14,7 +14,7 @@ export type IncidentEventType =
 export interface Incident {
   id: string;
   incidentNumber: string;
-  alertId: string;
+  alertId?: string;
   title: string;
   description: string;
   severity: IncidentSeverity;
@@ -61,7 +61,15 @@ export interface CreateIncidentNoteRequest {
   content: string;
 }
 
-export interface IncidentTimelineEvent {
+export interface IncidentNote {
+  id: string;
+  incidentId: string;
+  author: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface IncidentEvent {
   id: string;
   incidentId: string;
   eventType: IncidentEventType;
@@ -69,3 +77,8 @@ export interface IncidentTimelineEvent {
   description: string;
   createdAt: string;
 }
+
+/**
+ * Compatibility alias for existing timeline consumers.
+ */
+export type IncidentTimelineEvent = IncidentEvent;

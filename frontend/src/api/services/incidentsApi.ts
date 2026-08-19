@@ -2,9 +2,10 @@ import { apiClient } from "../client";
 import type {
   CreateIncidentNoteRequest,
   Incident,
+  IncidentEvent,
+  IncidentNote,
   IncidentPage,
   IncidentQueryParameters,
-  IncidentTimelineEvent,
   UpdateIncidentRequest,
 } from "../../types/incidents";
 
@@ -24,10 +25,18 @@ export async function getIncident(id: string): Promise<Incident> {
   return response.data;
 }
 
+export async function getIncidentNotes(id: string): Promise<IncidentNote[]> {
+  const response = await apiClient.get<IncidentNote[]>(
+    `/incidents/${id}/notes`,
+  );
+
+  return response.data;
+}
+
 export async function getIncidentTimeline(
   id: string,
-): Promise<IncidentTimelineEvent[]> {
-  const response = await apiClient.get<IncidentTimelineEvent[]>(
+): Promise<IncidentEvent[]> {
+  const response = await apiClient.get<IncidentEvent[]>(
     `/incidents/${id}/timeline`,
   );
 
@@ -43,11 +52,14 @@ export async function updateIncident(
   return response.data;
 }
 
-export async function addIncidentNote(
+export async function createIncidentNote(
   id: string,
   request: CreateIncidentNoteRequest,
-): Promise<unknown> {
-  const response = await apiClient.post(`/incidents/${id}/notes`, request);
+): Promise<IncidentNote> {
+  const response = await apiClient.post<IncidentNote>(
+    `/incidents/${id}/notes`,
+    request,
+  );
 
   return response.data;
 }

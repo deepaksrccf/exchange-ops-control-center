@@ -3,7 +3,7 @@ export type AlertSeverity = "INFO" | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 export type AlertStatus =
   "OPEN" | "ACKNOWLEDGED" | "ESCALATED" | "RESOLVED" | "SUPPRESSED";
 
-export type IncidentSeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+export type IncidentSeverity = "SEV1" | "SEV2" | "SEV3" | "SEV4";
 
 export interface Alert {
   id: string;

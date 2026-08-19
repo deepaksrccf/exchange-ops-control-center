@@ -6,9 +6,10 @@ import {
 } from "@tanstack/react-query";
 
 import {
-  addIncidentNote,
+  createIncidentNote,
   getIncident,
   getIncidents,
+  getIncidentNotes,
   getIncidentTimeline,
   updateIncident,
 } from "../api/services/incidentsApi";
@@ -23,7 +24,6 @@ export function useIncidentsQuery(parameters: IncidentQueryParameters) {
     queryKey: ["incidents", parameters],
     queryFn: () => getIncidents(parameters),
     placeholderData: keepPreviousData,
-    retry: 1,
   });
 }
 
@@ -32,7 +32,14 @@ export function useIncidentQuery(id: string | undefined) {
     queryKey: ["incident", id],
     queryFn: () => getIncident(id ?? ""),
     enabled: Boolean(id),
-    retry: 1,
+  });
+}
+
+export function useIncidentNotesQuery(id: string | undefined) {
+  return useQuery({
+    queryKey: ["incident-notes", id],
+    queryFn: () => getIncidentNotes(id ?? ""),
+    enabled: Boolean(id),
   });
 }
 
@@ -41,7 +48,6 @@ export function useIncidentTimelineQuery(id: string | undefined) {
     queryKey: ["incident-timeline", id],
     queryFn: () => getIncidentTimeline(id ?? ""),
     enabled: Boolean(id),
-    retry: 1,
   });
 }
 
@@ -79,7 +85,7 @@ export function useUpdateIncident() {
   });
 }
 
-export function useAddIncidentNote() {
+export function useCreateIncidentNote() {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -89,12 +95,15 @@ export function useAddIncidentNote() {
     }: {
       id: string;
       request: CreateIncidentNoteRequest;
-    }) => addIncidentNote(id, request),
+    }) => createIncidentNote(id, request),
 
     onSuccess: async (_, variables) => {
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ["incident", variables.id],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["incident-notes", variables.id],
         }),
         queryClient.invalidateQueries({
           queryKey: ["incident-timeline", variables.id],

@@ -24,6 +24,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -47,12 +48,14 @@ class AlertServiceTest {
   @Mock private AlertRepository alertRepository;
   @Mock private AlertRuleRepository alertRuleRepository;
   @Mock private IncidentRepository incidentRepository;
-  @Mock private ReferenceDataService referenceDataService;
+
+  private StubReferenceDataService referenceDataService;
 
   private AlertService alertService;
 
   @BeforeEach
   void setUp() {
+    referenceDataService = new StubReferenceDataService();
     alertService =
         new AlertService(
             alertRepository,
@@ -113,9 +116,9 @@ class AlertServiceTest {
 
   private void stubEnrichment() {
     when(alertRuleRepository.findAll()).thenReturn(List.of(rule()));
-    when(referenceDataService.venueCodesById()).thenReturn(Map.of(VENUE_ID, "NVLX"));
-    when(referenceDataService.symbolTickersById()).thenReturn(Map.of(SYMBOL_ID, "ALPH"));
     when(incidentRepository.findByAlertIdIn(anyList())).thenReturn(List.of());
+    referenceDataService.setVenueCodesById(Map.of(VENUE_ID, "NVLX"));
+    referenceDataService.setSymbolTickersById(Map.of(SYMBOL_ID, "ALPH"));
   }
 
   private Alert alert(AlertStatus status) {
@@ -142,5 +145,36 @@ class AlertServiceTest {
         new BigDecimal("250.000000"),
         60,
         true);
+  }
+
+  /**
+   * Stub implementation of ReferenceDataService for testing AlertService. Uses simple HashMaps to
+   * store data instead of Mockito mocking, avoiding Java 25 bytecode instrumentation issues.
+   */
+  private static class StubReferenceDataService extends ReferenceDataService {
+    private Map<UUID, String> venueCodesById = new HashMap<>();
+    private Map<UUID, String> symbolTickersById = new HashMap<>();
+
+    StubReferenceDataService() {
+      super(null, null, null, null);
+    }
+
+    void setVenueCodesById(Map<UUID, String> data) {
+      this.venueCodesById = new HashMap<>(data);
+    }
+
+    void setSymbolTickersById(Map<UUID, String> data) {
+      this.symbolTickersById = new HashMap<>(data);
+    }
+
+    @Override
+    public Map<UUID, String> venueCodesById() {
+      return new HashMap<>(venueCodesById);
+    }
+
+    @Override
+    public Map<UUID, String> symbolTickersById() {
+      return new HashMap<>(symbolTickersById);
+    }
   }
 }

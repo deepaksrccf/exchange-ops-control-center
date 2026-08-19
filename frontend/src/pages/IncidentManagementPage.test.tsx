@@ -4,16 +4,19 @@ import userEvent from "@testing-library/user-event";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider, createMemoryRouter } from "react-router-dom";
 
-import { queryClient } from "../api/queryClient";
 import { IncidentManagementPage } from "../pages/IncidentManagementPage";
 import * as incidentsApi from "../api/services/incidentsApi";
-import type { Incident, IncidentPage } from "../types/incidents";
+import {
+  buildIncident,
+  buildIncidentPage,
+  createTestQueryClient,
+} from "../test/incidentFixtures";
 
 // Mock the API service
 vi.mock("../api/services/incidentsApi");
 
-const mockIncidents: Incident[] = [
-  {
+const mockIncidents = [
+  buildIncident({
     id: "incident-1",
     incidentNumber: "INC-001",
     title: "High latency on NASDAQ venue",
@@ -23,8 +26,8 @@ const mockIncidents: Incident[] = [
     owner: "ops.deepak",
     createdAt: "2026-01-15T10:30:00Z",
     updatedAt: "2026-01-15T10:30:00Z",
-  },
-  {
+  }),
+  buildIncident({
     id: "incident-2",
     incidentNumber: "INC-002",
     title: "Circuit breaker triggered on AAPL",
@@ -34,28 +37,22 @@ const mockIncidents: Incident[] = [
     owner: undefined,
     createdAt: "2026-01-15T09:15:00Z",
     updatedAt: "2026-01-15T09:15:00Z",
-  },
+  }),
 ];
 
-const mockPage: IncidentPage = {
+const mockPage = buildIncidentPage({
   content: mockIncidents,
-  page: 0,
-  size: 25,
   totalElements: 2,
-  totalPages: 1,
-  first: true,
-  last: true,
-};
+});
 
 describe("IncidentManagementPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    queryClient.clear();
-
     vi.mocked(incidentsApi.getIncidents).mockResolvedValue(mockPage);
   });
 
   const renderWithRouter = () => {
+    const queryClient = createTestQueryClient();
     const router = createMemoryRouter(
       [
         {
@@ -97,25 +94,18 @@ describe("IncidentManagementPage", () => {
 
     const table = screen.getByRole("table");
 
-    // Check severity badges
     expect(within(table).getByText("SEV1")).toBeInTheDocument();
     expect(within(table).getByText("SEV2")).toBeInTheDocument();
-
-    // Check statuses
     expect(within(table).getByText("OPEN")).toBeInTheDocument();
     expect(within(table).getByText("INVESTIGATING")).toBeInTheDocument();
-
-    // Check owner display
     expect(within(table).getByText("ops.deepak")).toBeInTheDocument();
     expect(within(table).getByText("Unassigned")).toBeInTheDocument();
   });
 
   it("should show empty state when no incidents match filters", async () => {
-    vi.mocked(incidentsApi.getIncidents).mockResolvedValue({
-      ...mockPage,
-      content: [],
-      totalElements: 0,
-    });
+    vi.mocked(incidentsApi.getIncidents).mockResolvedValue(
+      buildIncidentPage({ content: [], totalElements: 0 }),
+    );
 
     renderWithRouter();
 
@@ -138,10 +128,7 @@ describe("IncidentManagementPage", () => {
 
     await waitFor(() => {
       expect(vi.mocked(incidentsApi.getIncidents)).toHaveBeenCalledWith(
-        expect.objectContaining({
-          status: "OPEN",
-          page: 0,
-        }),
+        expect.objectContaining({ status: "OPEN", page: 0 }),
       );
     });
   });
@@ -158,10 +145,7 @@ describe("IncidentManagementPage", () => {
 
     await waitFor(() => {
       expect(vi.mocked(incidentsApi.getIncidents)).toHaveBeenCalledWith(
-        expect.objectContaining({
-          severity: "SEV1",
-          page: 0,
-        }),
+        expect.objectContaining({ severity: "SEV1", page: 0 }),
       );
     });
   });
@@ -173,15 +157,32 @@ describe("IncidentManagementPage", () => {
       expect(screen.getByText("INC-001")).toBeInTheDocument();
     });
 
-    const ownerInput = screen.getByPlaceholderText("e.g., ops.deepak");
-    await userEvent.clear(ownerInput);
+    const ownerInput = screen.getByLabelText("Owner");
     await userEvent.type(ownerInput, "ops.deepak");
 
     await waitFor(() => {
       expect(vi.mocked(incidentsApi.getIncidents)).toHaveBeenCalledWith(
-        expect.objectContaining({
-          owner: "ops.deepak",
-        }),
+        expect.objectContaining({ owner: "ops.deepak" }),
+      );
+    });
+  });
+
+  it("should apply a search term", async () => {
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByText("INC-001")).toBeInTheDocument();
+    });
+
+    const searchInput = screen.getByLabelText("Search");
+    await userEvent.type(searchInput, "latency");
+
+    const applyButton = screen.getByRole("button", { name: /apply search/i });
+    await userEvent.click(applyButton);
+
+    await waitFor(() => {
+      expect(vi.mocked(incidentsApi.getIncidents)).toHaveBeenCalledWith(
+        expect.objectContaining({ search: "latency", page: 0 }),
       );
     });
   });
@@ -193,7 +194,6 @@ describe("IncidentManagementPage", () => {
       expect(screen.getByText("INC-001")).toBeInTheDocument();
     });
 
-    // Apply a filter
     const statusSelect = screen.getByLabelText("Status") as HTMLSelectElement;
     await userEvent.selectOptions(statusSelect, "OPEN");
 
@@ -201,8 +201,7 @@ describe("IncidentManagementPage", () => {
       expect(statusSelect.value).toBe("OPEN");
     });
 
-    // Reset filters
-    const resetButton = screen.getByRole("button", { name: /reset filters/i });
+    const resetButton = screen.getByRole("button", { name: /^reset$/i });
     await userEvent.click(resetButton);
 
     await waitFor(() => {
@@ -222,10 +221,7 @@ describe("IncidentManagementPage", () => {
 
     await waitFor(() => {
       expect(vi.mocked(incidentsApi.getIncidents)).toHaveBeenCalledWith(
-        expect.objectContaining({
-          size: 50,
-          page: 0,
-        }),
+        expect.objectContaining({ size: 50, page: 0 }),
       );
     });
   });
@@ -237,8 +233,8 @@ describe("IncidentManagementPage", () => {
       expect(screen.getByText("INC-001")).toBeInTheDocument();
     });
 
-    const viewButton = screen.getAllByRole("link", { name: /view/i })[0];
-    expect(viewButton).toHaveAttribute("href", "/incidents/incident-1");
+    const viewLink = screen.getAllByRole("link", { name: /view/i })[0];
+    expect(viewLink).toHaveAttribute("href", "/incidents/incident-1");
   });
 
   it("should show error state on API failure", async () => {

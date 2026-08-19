@@ -29,7 +29,9 @@ import com.deepak.exchangeops.repository.IncidentRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,12 +51,14 @@ class IncidentServiceTest {
   @Mock private IncidentRepository incidentRepository;
   @Mock private IncidentNoteRepository noteRepository;
   @Mock private IncidentEventRepository eventRepository;
-  @Mock private AlertService alertService;
+
+  private StubAlertService alertService;
 
   private IncidentService incidentService;
 
   @BeforeEach
   void setUp() {
+    alertService = new StubAlertService();
     incidentService =
         new IncidentService(
             incidentRepository,
@@ -67,7 +71,7 @@ class IncidentServiceTest {
 
   @Test
   void createFromAlertAllocatesTheNextIncidentNumberAndSeedsTheTimeline() {
-    when(alertService.requireAlert(ALERT_ID)).thenReturn(alert());
+    alertService.registerAlert(ALERT_ID, alert());
     when(incidentRepository.findByAlertId(ALERT_ID)).thenReturn(Optional.empty());
     when(incidentRepository.findHighestIncidentNumber()).thenReturn(Optional.of("INC-2026-0004"));
     when(incidentRepository.save(any(Incident.class)))
@@ -96,7 +100,7 @@ class IncidentServiceTest {
 
   @Test
   void createFromAlertStartsNumberingWhenNoIncidentsExist() {
-    when(alertService.requireAlert(ALERT_ID)).thenReturn(alert());
+    alertService.registerAlert(ALERT_ID, alert());
     when(incidentRepository.findByAlertId(ALERT_ID)).thenReturn(Optional.empty());
     when(incidentRepository.findHighestIncidentNumber()).thenReturn(Optional.empty());
     when(incidentRepository.save(any(Incident.class)))
@@ -114,7 +118,7 @@ class IncidentServiceTest {
 
   @Test
   void createFromAlertRejectsADuplicateIncident() {
-    when(alertService.requireAlert(ALERT_ID)).thenReturn(alert());
+    alertService.registerAlert(ALERT_ID, alert());
     when(incidentRepository.findByAlertId(ALERT_ID)).thenReturn(Optional.of(incident()));
 
     assertThatThrownBy(
@@ -246,5 +250,30 @@ class IncidentServiceTest {
         IncidentSeverity.SEV2,
         IncidentStatus.INVESTIGATING,
         "ops.avery");
+  }
+
+  /**
+   * Stub implementation of AlertService for testing IncidentService. Uses a simple HashMap to store
+   * alerts instead of Mockito mocking, avoiding Java 25 bytecode instrumentation issues.
+   */
+  private static class StubAlertService extends AlertService {
+    private final Map<UUID, Alert> alerts = new HashMap<>();
+
+    StubAlertService() {
+      super(null, null, null, null, null, null);
+    }
+
+    void registerAlert(UUID id, Alert alert) {
+      alerts.put(id, alert);
+    }
+
+    @Override
+    public Alert requireAlert(UUID id) {
+      Alert alert = alerts.get(id);
+      if (alert == null) {
+        throw new IllegalStateException("Alert not registered: " + id);
+      }
+      return alert;
+    }
   }
 }

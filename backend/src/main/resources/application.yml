@@ -58,6 +58,10 @@ springdoc:
 app:
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  generator:
+    interval-ms: ${GENERATOR_INTERVAL_MS:1000}
+    events-per-cycle: ${GENERATOR_EVENTS_PER_CYCLE:1}
+    random-seed: ${GENERATOR_RANDOM_SEED:2026}
 
 logging:
   level:

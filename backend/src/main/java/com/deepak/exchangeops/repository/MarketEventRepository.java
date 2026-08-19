@@ -11,4 +11,7 @@ public interface MarketEventRepository
 
   @Query("select avg(e.processingLatencyMs) from MarketEvent e")
   Double averageProcessingLatencyMs();
+
+  @Query("select coalesce(max(e.sequenceNumber), 0) from MarketEvent e")
+  long maximumSequenceNumber();
 }

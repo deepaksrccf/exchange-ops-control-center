@@ -8,41 +8,10 @@ import { ErrorState } from "../components/ui/ErrorState";
 import { LoadingState } from "../components/ui/LoadingState";
 import { useIncidentsQuery } from "../hooks/useIncidents";
 import type { IncidentSeverity, IncidentStatus } from "../types/incidents";
+import { severityTone, statusTone } from "../utils/badgeTone";
 import { formatTimestamp } from "../utils/formatters";
 
 const numberFormatter = new Intl.NumberFormat("en-US");
-
-function severityTone(
-  severity: IncidentSeverity,
-): "danger" | "warning" | "info" | "neutral" {
-  switch (severity) {
-    case "SEV1":
-      return "danger";
-    case "SEV2":
-      return "warning";
-    case "SEV3":
-      return "info";
-    default:
-      return "neutral";
-  }
-}
-
-function statusTone(
-  status: IncidentStatus,
-): "danger" | "warning" | "success" | "neutral" {
-  switch (status) {
-    case "OPEN":
-      return "danger";
-    case "INVESTIGATING":
-    case "MITIGATED":
-      return "warning";
-    case "RESOLVED":
-    case "CLOSED":
-      return "success";
-    default:
-      return "neutral";
-  }
-}
 
 function messageFrom(error: unknown): string {
   return error instanceof Error ? error.message : "Unable to load incidents.";

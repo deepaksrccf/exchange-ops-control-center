@@ -7,45 +7,14 @@ import { Card } from "../components/ui/Card";
 import { ErrorState } from "../components/ui/ErrorState";
 import { LoadingState } from "../components/ui/LoadingState";
 import {
-  useAddIncidentNote,
+  useCreateIncidentNote,
   useIncidentQuery,
   useIncidentTimelineQuery,
   useUpdateIncident,
 } from "../hooks/useIncidents";
 import type { IncidentSeverity, IncidentStatus } from "../types/incidents";
+import { severityTone, statusTone } from "../utils/badgeTone";
 import { formatTimestamp } from "../utils/formatters";
-
-function severityTone(
-  severity: IncidentSeverity,
-): "danger" | "warning" | "info" | "neutral" {
-  switch (severity) {
-    case "SEV1":
-      return "danger";
-    case "SEV2":
-      return "warning";
-    case "SEV3":
-      return "info";
-    default:
-      return "neutral";
-  }
-}
-
-function statusTone(
-  status: IncidentStatus,
-): "danger" | "warning" | "success" | "neutral" {
-  switch (status) {
-    case "OPEN":
-      return "danger";
-    case "INVESTIGATING":
-    case "MITIGATED":
-      return "warning";
-    case "RESOLVED":
-    case "CLOSED":
-      return "success";
-    default:
-      return "neutral";
-  }
-}
 
 function messageFrom(error: unknown): string {
   return error instanceof Error
@@ -59,7 +28,7 @@ export function IncidentDetailPage() {
   const incidentQuery = useIncidentQuery(id);
   const timelineQuery = useIncidentTimelineQuery(id);
   const updateMutation = useUpdateIncident();
-  const noteMutation = useAddIncidentNote();
+  const noteMutation = useCreateIncidentNote();
 
   const [actor, setActor] = useState("ops.deepak");
   const [owner, setOwner] = useState("");
@@ -234,10 +203,12 @@ export function IncidentDetailPage() {
           </dl>
 
           <div className="linked-records">
-            <Link to={`/alerts/${incident.alertId}`}>
-              <ExternalLink size={16} aria-hidden="true" />
-              Originating alert
-            </Link>
+            {incident.alertId && (
+              <Link to={`/alerts/${incident.alertId}`}>
+                <ExternalLink size={16} aria-hidden="true" />
+                Originating alert
+              </Link>
+            )}
           </div>
         </Card>
 
