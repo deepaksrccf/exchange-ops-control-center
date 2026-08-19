@@ -1,5 +1,5 @@
-import { ArrowLeft, Clock, ExternalLink, Save, Send } from "lucide-react";
-import { type FormEvent, useState, useMemo } from "react";
+import { ArrowLeft, ExternalLink, MessageSquarePlus, Save } from "lucide-react";
+import { type FormEvent, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { Badge } from "../components/ui/Badge";
@@ -7,14 +7,45 @@ import { Card } from "../components/ui/Card";
 import { ErrorState } from "../components/ui/ErrorState";
 import { LoadingState } from "../components/ui/LoadingState";
 import {
-  useCreateIncidentNote,
+  useAddIncidentNote,
   useIncidentQuery,
   useIncidentTimelineQuery,
   useUpdateIncident,
 } from "../hooks/useIncidents";
-import type { IncidentStatus, IncidentEvent } from "../types/incidents";
-import { severityTone, statusTone } from "../utils/badgeTone";
+import type { IncidentSeverity, IncidentStatus } from "../types/incidents";
 import { formatTimestamp } from "../utils/formatters";
+
+function severityTone(
+  severity: IncidentSeverity,
+): "danger" | "warning" | "info" | "neutral" {
+  switch (severity) {
+    case "SEV1":
+      return "danger";
+    case "SEV2":
+      return "warning";
+    case "SEV3":
+      return "info";
+    default:
+      return "neutral";
+  }
+}
+
+function statusTone(
+  status: IncidentStatus,
+): "danger" | "warning" | "success" | "neutral" {
+  switch (status) {
+    case "OPEN":
+      return "danger";
+    case "INVESTIGATING":
+    case "MITIGATED":
+      return "warning";
+    case "RESOLVED":
+    case "CLOSED":
+      return "success";
+    default:
+      return "neutral";
+  }
+}
 
 function messageFrom(error: unknown): string {
   return error instanceof Error
@@ -22,69 +53,41 @@ function messageFrom(error: unknown): string {
     : "The operation could not be completed.";
 }
 
-// Map event types to human-readable descriptions
-function describeEventType(event: IncidentEvent): string {
-  const prefix = `${event.actor}`;
-  switch (event.eventType) {
-    case "CREATED":
-      return `${prefix} created the incident`;
-    case "STATUS_CHANGED":
-      return `${prefix} changed status: ${event.description}`;
-    case "SEVERITY_CHANGED":
-      return `${prefix} changed severity: ${event.description}`;
-    case "OWNER_ASSIGNED":
-      return `${prefix} assigned to ${event.description}`;
-    case "NOTE_ADDED":
-      return `${prefix} added a note`;
-    case "RESOLVED":
-      return `${prefix} marked as resolved`;
-    default:
-      return event.description;
-  }
-}
-
-// Sort timeline events by creation time (oldest first)
-function sortTimeline(events: IncidentEvent[]): IncidentEvent[] {
-  return [...events].sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-  );
-}
-
 export function IncidentDetailPage() {
   const { id } = useParams();
 
-  // Queries
   const incidentQuery = useIncidentQuery(id);
   const timelineQuery = useIncidentTimelineQuery(id);
-
-  // Mutations
   const updateMutation = useUpdateIncident();
-  const noteMutation = useCreateIncidentNote();
+  const noteMutation = useAddIncidentNote();
 
-  // Local state for form controls
-  const [operator, setOperator] = useState("ops.deepak");
-  const [editingStatus, setEditingStatus] = useState(false);
-  const [editingOwner, setEditingOwner] = useState(false);
-  // Form state - only used when editing, defaults to current values
-  const [formStatus, setFormStatus] = useState<IncidentStatus | "">(
-    incidentQuery.data?.status ?? "",
-  );
-  const [formOwner, setFormOwner] = useState(incidentQuery.data?.owner ?? "");
+  const [actor, setActor] = useState("ops.deepak");
+  const [owner, setOwner] = useState("");
+  const [status, setStatus] = useState<IncidentStatus>("OPEN");
+  const [severity, setSeverity] = useState<IncidentSeverity>("SEV3");
+  const [resolutionSummary, setResolutionSummary] = useState("");
+  const [noteAuthor, setNoteAuthor] = useState("ops.deepak");
   const [noteContent, setNoteContent] = useState("");
   const [feedback, setFeedback] = useState("");
 
-  // Compute sorted timeline unconditionally (move before conditionals)
-  const sortedTimeline = useMemo(
-    () => (timelineQuery.data ? sortTimeline(timelineQuery.data) : []),
-    [timelineQuery.data],
-  );
+  const incident = incidentQuery.data;
 
-  // Handle loading states
+  useEffect(() => {
+    if (!incident) {
+      return;
+    }
+
+    setOwner(incident.owner ?? "");
+    setStatus(incident.status);
+    setSeverity(incident.severity);
+    setResolutionSummary(incident.resolutionSummary ?? "");
+  }, [incident]);
+
   if (incidentQuery.isPending) {
     return <LoadingState message="Loading incident details..." />;
   }
 
-  if (incidentQuery.isError || !incidentQuery.data) {
+  if (incidentQuery.isError || !incident) {
     return (
       <ErrorState
         message={messageFrom(incidentQuery.error)}
@@ -93,72 +96,43 @@ export function IncidentDetailPage() {
     );
   }
 
-  const incident = incidentQuery.data;
-
-  // Submit status update
-  const handleStatusUpdate = () => {
-    if (!id || !formStatus || !operator.trim()) {
-      setFeedback("Please select a status and provide an operator name.");
-      return;
-    }
-
-    setFeedback("");
-
-    updateMutation.mutate(
-      {
-        id,
-        request: {
-          status: formStatus as IncidentStatus,
-          actor: operator.trim(),
-        },
-      },
-      {
-        onSuccess: () => {
-          setFeedback("Incident status updated successfully.");
-          setEditingStatus(false);
-        },
-        onError: (error) => {
-          setFeedback(messageFrom(error));
-        },
-      },
-    );
-  };
-
-  // Submit owner update
-  const handleOwnerUpdate = () => {
-    if (!id || !operator.trim()) {
-      setFeedback("Please provide an operator name.");
-      return;
-    }
-
-    setFeedback("");
-
-    updateMutation.mutate(
-      {
-        id,
-        request: {
-          owner: formOwner.trim() || undefined,
-          actor: operator.trim(),
-        },
-      },
-      {
-        onSuccess: () => {
-          setFeedback("Incident owner updated successfully.");
-          setEditingOwner(false);
-        },
-        onError: (error) => {
-          setFeedback(messageFrom(error));
-        },
-      },
-    );
-  };
-
-  // Submit new note
-  const handleAddNote = (event: FormEvent<HTMLFormElement>) => {
+  const update = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!id || !noteContent.trim() || !operator.trim()) {
-      setFeedback("Please provide a note and operator name.");
+    if (!id || !actor.trim()) {
+      setFeedback("A valid actor identifier is required.");
+      return;
+    }
+
+    setFeedback("");
+
+    updateMutation.mutate(
+      {
+        id,
+        request: {
+          status,
+          severity,
+          owner: owner.trim() || undefined,
+          resolutionSummary: resolutionSummary.trim() || undefined,
+          actor: actor.trim(),
+        },
+      },
+      {
+        onSuccess: () => {
+          setFeedback("Incident updated successfully.");
+        },
+        onError: (error) => {
+          setFeedback(messageFrom(error));
+        },
+      },
+    );
+  };
+
+  const addNote = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!id || !noteAuthor.trim() || !noteContent.trim()) {
+      setFeedback("Note author and content are required.");
       return;
     }
 
@@ -166,16 +140,16 @@ export function IncidentDetailPage() {
 
     noteMutation.mutate(
       {
-        incidentId: id,
+        id,
         request: {
-          author: operator.trim(),
+          author: noteAuthor.trim(),
           content: noteContent.trim(),
         },
       },
       {
         onSuccess: () => {
-          setFeedback("Note added successfully.");
           setNoteContent("");
+          setFeedback("Note added successfully.");
         },
         onError: (error) => {
           setFeedback(messageFrom(error));
@@ -183,6 +157,11 @@ export function IncidentDetailPage() {
       },
     );
   };
+
+  const timeline = [...(timelineQuery.data ?? [])].sort(
+    (left, right) =>
+      new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime(),
+  );
 
   return (
     <div className="page">
@@ -193,11 +172,10 @@ export function IncidentDetailPage() {
             Incident Management
           </Link>
 
-          <p className="page__eyebrow">Incident Resolution</p>
+          <p className="page__eyebrow">Synthetic Operational Incident</p>
 
-          <h1>{incident.title}</h1>
-
-          <p>{incident.description}</p>
+          <h1>{incident.incidentNumber}</h1>
+          <p>{incident.title}</p>
         </div>
 
         <div className="alert-detail-header__badges">
@@ -219,8 +197,16 @@ export function IncidentDetailPage() {
         <Card title="Incident Information">
           <dl className="event-detail-list">
             <div>
-              <dt>Incident Number</dt>
-              <dd>{incident.incidentNumber}</dd>
+              <dt>Title</dt>
+              <dd>{incident.title}</dd>
+            </div>
+            <div>
+              <dt>Description</dt>
+              <dd>{incident.description}</dd>
+            </div>
+            <div>
+              <dt>Owner</dt>
+              <dd>{incident.owner ?? "Unassigned"}</dd>
             </div>
             <div>
               <dt>Created</dt>
@@ -230,204 +216,144 @@ export function IncidentDetailPage() {
               <dt>Updated</dt>
               <dd>{formatTimestamp(incident.updatedAt)}</dd>
             </div>
-            {incident.resolvedAt && (
-              <div>
-                <dt>Resolved</dt>
-                <dd>{formatTimestamp(incident.resolvedAt)}</dd>
-              </div>
-            )}
-            {incident.alertId && (
-              <div>
-                <dt>Related Alert</dt>
-                <dd>
-                  <Link to={`/alerts/${incident.alertId}`}>
-                    <ExternalLink size={16} aria-hidden="true" />
-                    View Alert
-                  </Link>
-                </dd>
-              </div>
-            )}
+            <div>
+              <dt>Resolved</dt>
+              <dd>
+                {incident.resolvedAt
+                  ? formatTimestamp(incident.resolvedAt)
+                  : "Not resolved"}
+              </dd>
+            </div>
+            <div>
+              <dt>Resolution</dt>
+              <dd>
+                {incident.resolutionSummary ??
+                  "No resolution summary recorded."}
+              </dd>
+            </div>
           </dl>
+
+          <div className="linked-records">
+            <Link to={`/alerts/${incident.alertId}`}>
+              <ExternalLink size={16} aria-hidden="true" />
+              Originating alert
+            </Link>
+          </div>
         </Card>
 
-        <Card title="Status Management">
-          {editingStatus ? (
-            <div className="incident-edit-form">
-              <label>
-                Status
-                <select
-                  value={formStatus}
-                  onChange={(e) =>
-                    setFormStatus(e.target.value as IncidentStatus | "")
-                  }
-                >
-                  <option value="OPEN">Open</option>
-                  <option value="INVESTIGATING">Investigating</option>
-                  <option value="MITIGATED">Mitigated</option>
-                  <option value="RESOLVED">Resolved</option>
-                  <option value="CLOSED">Closed</option>
-                </select>
-              </label>
-
-              <label>
-                Operator
-                <input
-                  value={operator}
-                  maxLength={128}
-                  pattern="[A-Za-z0-9._-]+"
-                  onChange={(e) => setOperator(e.target.value)}
-                />
-              </label>
-
-              <div className="incident-form-actions">
-                <button
-                  type="button"
-                  className="event-action-button"
-                  disabled={updateMutation.isPending}
-                  onClick={handleStatusUpdate}
-                >
-                  <Save size={15} aria-hidden="true" />
-                  Save Status
-                </button>
-
-                <button
-                  type="button"
-                  className="event-action-button"
-                  onClick={() => setEditingStatus(false)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <dl className="event-detail-list">
-                <div>
-                  <dt>Current Status</dt>
-                  <dd>
-                    <Badge tone={statusTone(incident.status)}>
-                      {incident.status}
-                    </Badge>
-                  </dd>
-                </div>
-              </dl>
-
-              <button
-                type="button"
-                className="event-action-button"
-                onClick={() => setEditingStatus(true)}
-              >
-                Change Status
-              </button>
-            </>
-          )}
-        </Card>
-
-        <Card title="Owner Assignment">
-          {editingOwner ? (
-            <div className="incident-edit-form">
-              <label>
-                Owner
-                <input
-                  value={formOwner}
-                  maxLength={128}
-                  pattern="[A-Za-z0-9._-]*"
-                  onChange={(e) => setFormOwner(e.target.value)}
-                  placeholder="e.g., ops.deepak"
-                />
-              </label>
-
-              <label>
-                Operator
-                <input
-                  value={operator}
-                  maxLength={128}
-                  pattern="[A-Za-z0-9._-]+"
-                  onChange={(e) => setOperator(e.target.value)}
-                />
-              </label>
-
-              <div className="incident-form-actions">
-                <button
-                  type="button"
-                  className="event-action-button"
-                  disabled={updateMutation.isPending}
-                  onClick={handleOwnerUpdate}
-                >
-                  <Save size={15} aria-hidden="true" />
-                  Save Owner
-                </button>
-
-                <button
-                  type="button"
-                  className="event-action-button"
-                  onClick={() => setEditingOwner(false)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <dl className="event-detail-list">
-                <div>
-                  <dt>Current Owner</dt>
-                  <dd>{incident.owner ?? "Unassigned"}</dd>
-                </div>
-              </dl>
-
-              <button
-                type="button"
-                className="event-action-button"
-                onClick={() => setEditingOwner(true)}
-              >
-                Edit Owner
-              </button>
-            </>
-          )}
-        </Card>
-
-        {incident.resolutionSummary && (
-          <Card title="Resolution Summary">
-            <p>{incident.resolutionSummary}</p>
-          </Card>
-        )}
-
-        <Card title="Add a Note">
-          <form onSubmit={handleAddNote} className="incident-note-form">
+        <Card title="Update Incident">
+          <form className="incident-update-form" onSubmit={update}>
             <label>
-              Operator
+              Actor
               <input
-                value={operator}
+                required
+                value={actor}
                 maxLength={128}
                 pattern="[A-Za-z0-9._-]+"
-                onChange={(e) => setOperator(e.target.value)}
+                onChange={(event) => setActor(event.target.value)}
+              />
+            </label>
+
+            <label>
+              Owner
+              <input
+                value={owner}
+                maxLength={128}
+                pattern="[A-Za-z0-9._-]*"
+                onChange={(event) => setOwner(event.target.value)}
+              />
+            </label>
+
+            <label>
+              Status
+              <select
+                value={status}
+                onChange={(event) =>
+                  setStatus(event.target.value as IncidentStatus)
+                }
+              >
+                <option value="OPEN">Open</option>
+                <option value="INVESTIGATING">Investigating</option>
+                <option value="MITIGATED">Mitigated</option>
+                <option value="RESOLVED">Resolved</option>
+                <option value="CLOSED">Closed</option>
+              </select>
+            </label>
+
+            <label>
+              Severity
+              <select
+                value={severity}
+                onChange={(event) =>
+                  setSeverity(event.target.value as IncidentSeverity)
+                }
+              >
+                <option value="SEV1">SEV1</option>
+                <option value="SEV2">SEV2</option>
+                <option value="SEV3">SEV3</option>
+                <option value="SEV4">SEV4</option>
+              </select>
+            </label>
+
+            <label>
+              Resolution summary
+              <textarea
+                rows={4}
+                maxLength={4000}
+                value={resolutionSummary}
+                onChange={(event) => setResolutionSummary(event.target.value)}
+              />
+            </label>
+
+            <button
+              type="submit"
+              className="primary-action-button"
+              disabled={updateMutation.isPending}
+            >
+              <Save size={17} aria-hidden="true" />
+              {updateMutation.isPending ? "Saving" : "Save incident"}
+            </button>
+          </form>
+        </Card>
+      </div>
+
+      <div className="incident-detail-grid">
+        <Card title="Add Investigation Note">
+          <form className="incident-note-form" onSubmit={addNote}>
+            <label>
+              Author
+              <input
+                required
+                value={noteAuthor}
+                maxLength={128}
+                pattern="[A-Za-z0-9._-]+"
+                onChange={(event) => setNoteAuthor(event.target.value)}
               />
             </label>
 
             <label>
               Note
               <textarea
-                value={noteContent}
+                required
+                rows={5}
                 maxLength={4000}
-                onChange={(e) => setNoteContent(e.target.value)}
-                placeholder="Enter incident notes here..."
-                rows={4}
+                value={noteContent}
+                onChange={(event) => setNoteContent(event.target.value)}
               />
             </label>
 
             <button
               type="submit"
-              className="event-action-button"
-              disabled={noteMutation.isPending || !noteContent.trim()}
+              className="primary-action-button"
+              disabled={noteMutation.isPending}
             >
-              <Send size={15} aria-hidden="true" />
-              Post Note
+              <MessageSquarePlus size={17} aria-hidden="true" />
+              {noteMutation.isPending ? "Adding" : "Add note"}
             </button>
           </form>
         </Card>
 
-        <Card title="Timeline of Changes">
+        <Card title="Immutable Timeline">
           {timelineQuery.isPending ? (
             <LoadingState message="Loading timeline..." />
           ) : timelineQuery.isError ? (
@@ -435,26 +361,31 @@ export function IncidentDetailPage() {
               message={messageFrom(timelineQuery.error)}
               onRetry={() => void timelineQuery.refetch()}
             />
-          ) : sortedTimeline.length === 0 ? (
-            <p className="data-table__empty">No events recorded yet.</p>
+          ) : timeline.length === 0 ? (
+            <p className="supporting-message">No timeline events were found.</p>
           ) : (
-            <ul className="incident-timeline">
-              {sortedTimeline.map((event) => (
-                <li key={event.id} className="timeline-entry">
-                  <div className="timeline-marker">
-                    <Clock size={16} aria-hidden="true" />
-                  </div>
-                  <div className="timeline-content">
-                    <p className="timeline-description">
-                      {describeEventType(event)}
-                    </p>
-                    <time className="timeline-time">
-                      {formatTimestamp(event.createdAt)}
-                    </time>
+            <ol className="incident-timeline">
+              {timeline.map((entry) => (
+                <li key={entry.id}>
+                  <span
+                    className="incident-timeline__marker"
+                    aria-hidden="true"
+                  />
+
+                  <div>
+                    <div className="incident-timeline__heading">
+                      <strong>{entry.eventType}</strong>
+                      <time dateTime={entry.createdAt}>
+                        {formatTimestamp(entry.createdAt)}
+                      </time>
+                    </div>
+
+                    <p>{entry.description}</p>
+                    <small>Actor: {entry.actor}</small>
                   </div>
                 </li>
               ))}
-            </ul>
+            </ol>
           )}
         </Card>
       </div>

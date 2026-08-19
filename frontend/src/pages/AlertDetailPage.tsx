@@ -269,10 +269,10 @@ export function AlertDetailPage() {
                   setSeverity(event.target.value as IncidentSeverity)
                 }
               >
-                <option value="CRITICAL">Critical</option>
-                <option value="HIGH">High</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="LOW">Low</option>
+                <option value="SEV1">SEV1 - Critical</option>
+                <option value="SEV2">SEV2 - High</option>
+                <option value="SEV3">SEV3 - Medium</option>
+                <option value="SEV4">SEV4 - Low</option>
               </select>
             </label>
 

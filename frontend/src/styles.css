@@ -1810,3 +1810,178 @@ textarea:focus-visible {
     grid-template-columns: 1fr;
   }
 }
+
+/* Functional Incident Management */
+
+.incident-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.incident-filter-grid {
+  display: grid;
+  grid-template-columns:
+    minmax(190px, 1.4fr)
+    minmax(145px, 1fr)
+    minmax(120px, 0.8fr)
+    minmax(150px, 1fr)
+    90px
+    auto
+    auto;
+  align-items: end;
+  gap: 11px;
+}
+
+.incident-filter-grid label,
+.incident-update-form label,
+.incident-note-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.incident-filter-grid input,
+.incident-filter-grid select,
+.incident-update-form input,
+.incident-update-form select,
+.incident-update-form textarea,
+.incident-note-form input,
+.incident-note-form textarea {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--surface-secondary);
+  color: var(--text);
+  padding: 7px 10px;
+  text-transform: none;
+}
+
+.incident-table {
+  min-width: 1180px;
+}
+
+.incident-table td:nth-child(4) {
+  min-width: 300px;
+  white-space: normal;
+}
+
+.incident-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(330px, 1fr);
+  gap: 18px;
+}
+
+.incident-update-form,
+.incident-note-form {
+  display: grid;
+  gap: 13px;
+}
+
+.incident-update-form textarea,
+.incident-note-form textarea {
+  resize: vertical;
+}
+
+.incident-timeline {
+  position: relative;
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.incident-timeline::before {
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  left: 6px;
+  width: 1px;
+  background: var(--border);
+  content: "";
+}
+
+.incident-timeline li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  gap: 12px;
+  padding-bottom: 20px;
+}
+
+.incident-timeline li:last-child {
+  padding-bottom: 0;
+}
+
+.incident-timeline__marker {
+  position: relative;
+  z-index: 1;
+  width: 13px;
+  height: 13px;
+  margin-top: 4px;
+  border: 3px solid var(--surface);
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+.incident-timeline__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.incident-timeline__heading strong {
+  color: var(--text);
+  font-size: 0.78rem;
+}
+
+.incident-timeline__heading time,
+.incident-timeline small {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.incident-timeline p {
+  margin: 4px 0;
+  color: var(--text-secondary);
+  font-size: 0.83rem;
+}
+
+@media (max-width: 1150px) {
+  .incident-filter-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .incident-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .incident-header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .incident-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .incident-timeline__heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+}

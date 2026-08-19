@@ -8,15 +8,44 @@ import { ErrorState } from "../components/ui/ErrorState";
 import { LoadingState } from "../components/ui/LoadingState";
 import { useIncidentsQuery } from "../hooks/useIncidents";
 import type { IncidentSeverity, IncidentStatus } from "../types/incidents";
-import { severityTone, statusTone } from "../utils/badgeTone";
 import { formatTimestamp } from "../utils/formatters";
 
 const numberFormatter = new Intl.NumberFormat("en-US");
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error
-    ? error.message
-    : "The operation could not be completed.";
+function severityTone(
+  severity: IncidentSeverity,
+): "danger" | "warning" | "info" | "neutral" {
+  switch (severity) {
+    case "SEV1":
+      return "danger";
+    case "SEV2":
+      return "warning";
+    case "SEV3":
+      return "info";
+    default:
+      return "neutral";
+  }
+}
+
+function statusTone(
+  status: IncidentStatus,
+): "danger" | "warning" | "success" | "neutral" {
+  switch (status) {
+    case "OPEN":
+      return "danger";
+    case "INVESTIGATING":
+    case "MITIGATED":
+      return "warning";
+    case "RESOLVED":
+    case "CLOSED":
+      return "success";
+    default:
+      return "neutral";
+  }
+}
+
+function messageFrom(error: unknown): string {
+  return error instanceof Error ? error.message : "Unable to load incidents.";
 }
 
 export function IncidentManagementPage() {
@@ -25,6 +54,8 @@ export function IncidentManagementPage() {
   const [status, setStatus] = useState<IncidentStatus | "">("");
   const [severity, setSeverity] = useState<IncidentSeverity | "">("");
   const [owner, setOwner] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
 
   const query = useIncidentsQuery({
     page,
@@ -32,7 +63,8 @@ export function IncidentManagementPage() {
     sort: "createdAt,desc",
     status: status || undefined,
     severity: severity || undefined,
-    owner: owner || undefined,
+    owner: owner.trim() || undefined,
+    search: search || undefined,
   });
 
   if (query.isPending) {
@@ -42,7 +74,7 @@ export function IncidentManagementPage() {
   if (query.isError) {
     return (
       <ErrorState
-        message={errorMessage(query.error)}
+        message={messageFrom(query.error)}
         onRetry={() => void query.refetch()}
       />
     );
@@ -54,15 +86,15 @@ export function IncidentManagementPage() {
     <div className="page">
       <header className="page__header">
         <div>
-          <p className="page__eyebrow">Operations Incident Management</p>
+          <p className="page__eyebrow">Operational Remediation</p>
           <h1>Incident Management</h1>
           <p>
-            Assign and resolve operational incidents detected across trading
-            venues and instruments.
+            Track ownership, investigation, mitigation, and resolution of
+            incidents derived from synthetic operational alerts.
           </p>
         </div>
 
-        <div className="alert-header-actions">
+        <div className="incident-header-actions">
           <strong>
             {numberFormatter.format(data.totalElements)} incidents
           </strong>
@@ -83,8 +115,24 @@ export function IncidentManagementPage() {
         </div>
       </header>
 
-      <Card title="Filters & Controls">
-        <div className="alert-filter-grid">
+      <Card title="Incident Filters">
+        <form
+          className="incident-filter-grid"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setSearch(searchInput.trim());
+            setPage(0);
+          }}
+        >
+          <label>
+            Search
+            <input
+              value={searchInput}
+              placeholder="Title or description"
+              onChange={(event) => setSearchInput(event.target.value)}
+            />
+          </label>
+
           <label>
             Status
             <select
@@ -113,10 +161,10 @@ export function IncidentManagementPage() {
               }}
             >
               <option value="">All severities</option>
-              <option value="SEV1">SEV1 (Highest)</option>
+              <option value="SEV1">SEV1</option>
               <option value="SEV2">SEV2</option>
               <option value="SEV3">SEV3</option>
-              <option value="SEV4">SEV4 (Lowest)</option>
+              <option value="SEV4">SEV4</option>
             </select>
           </label>
 
@@ -124,10 +172,12 @@ export function IncidentManagementPage() {
             Owner
             <input
               value={owner}
-              maxLength={128}
+              placeholder="ops.avery"
               pattern="[A-Za-z0-9._-]*"
-              onChange={(event) => setOwner(event.target.value)}
-              placeholder="e.g., ops.deepak"
+              onChange={(event) => {
+                setOwner(event.target.value);
+                setPage(0);
+              }}
             />
           </label>
 
@@ -146,6 +196,10 @@ export function IncidentManagementPage() {
             </select>
           </label>
 
+          <button type="submit" className="event-action-button">
+            Apply search
+          </button>
+
           <button
             type="button"
             className="event-action-button"
@@ -153,43 +207,51 @@ export function IncidentManagementPage() {
               setStatus("");
               setSeverity("");
               setOwner("");
+              setSearchInput("");
+              setSearch("");
               setPage(0);
             }}
           >
-            Reset filters
+            Reset
           </button>
-        </div>
+        </form>
       </Card>
 
       <Card title="Operational Incidents">
         <div className="event-table-container">
-          <table className="data-table alert-table">
+          <table className="data-table incident-table">
             <caption className="sr-only">
-              Paginated operational incidents
+              Paginated synthetic operational incidents
             </caption>
 
             <thead>
               <tr>
+                <th scope="col">Incident</th>
                 <th scope="col">Severity</th>
                 <th scope="col">Status</th>
-                <th scope="col">Incident</th>
+                <th scope="col">Title</th>
                 <th scope="col">Owner</th>
                 <th scope="col">Created</th>
                 <th scope="col">Updated</th>
-                <th scope="col">Actions</th>
+                <th scope="col">Action</th>
               </tr>
             </thead>
 
             <tbody>
               {data.content.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="data-table__empty">
+                  <td colSpan={8} className="data-table__empty">
                     No incidents match the selected filters.
                   </td>
                 </tr>
               ) : (
                 data.content.map((incident) => (
                   <tr key={incident.id}>
+                    <td>
+                      <Link to={`/incidents/${incident.id}`}>
+                        {incident.incidentNumber}
+                      </Link>
+                    </td>
                     <td>
                       <Badge tone={severityTone(incident.severity)}>
                         {incident.severity}
@@ -200,29 +262,18 @@ export function IncidentManagementPage() {
                         {incident.status}
                       </Badge>
                     </td>
-                    <td>
-                      <div className="incident-cell">
-                        <span className="incident-cell__number">
-                          {incident.incidentNumber}
-                        </span>
-                        <Link to={`/incidents/${incident.id}`}>
-                          {incident.title}
-                        </Link>
-                      </div>
-                    </td>
+                    <td>{incident.title}</td>
                     <td>{incident.owner ?? "Unassigned"}</td>
                     <td>{formatTimestamp(incident.createdAt)}</td>
                     <td>{formatTimestamp(incident.updatedAt)}</td>
                     <td>
-                      <div className="alert-row-actions">
-                        <Link
-                          className="table-action-button"
-                          to={`/incidents/${incident.id}`}
-                        >
-                          <Eye size={15} aria-hidden="true" />
-                          View
-                        </Link>
-                      </div>
+                      <Link
+                        className="table-action-button"
+                        to={`/incidents/${incident.id}`}
+                      >
+                        <Eye size={15} aria-hidden="true" />
+                        View
+                      </Link>
                     </td>
                   </tr>
                 ))

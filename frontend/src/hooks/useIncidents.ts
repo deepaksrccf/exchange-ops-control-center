@@ -1,15 +1,15 @@
 import {
+  keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
-  keepPreviousData,
 } from "@tanstack/react-query";
 
 import {
-  createIncidentNote,
+  addIncidentNote,
   getIncident,
-  getIncidentTimeline,
   getIncidents,
+  getIncidentTimeline,
   updateIncident,
 } from "../api/services/incidentsApi";
 import type {
@@ -18,10 +18,6 @@ import type {
   UpdateIncidentRequest,
 } from "../types/incidents";
 
-/**
- * Fetch paginated list of incidents with optional filters
- * Uses keepPreviousData for smooth pagination transitions
- */
 export function useIncidentsQuery(parameters: IncidentQueryParameters) {
   return useQuery({
     queryKey: ["incidents", parameters],
@@ -31,10 +27,6 @@ export function useIncidentsQuery(parameters: IncidentQueryParameters) {
   });
 }
 
-/**
- * Fetch a single incident by ID
- * Query is disabled if id is undefined; enables when id is provided
- */
 export function useIncidentQuery(id: string | undefined) {
   return useQuery({
     queryKey: ["incident", id],
@@ -44,10 +36,6 @@ export function useIncidentQuery(id: string | undefined) {
   });
 }
 
-/**
- * Fetch immutable timeline of state changes for an incident
- * Query is disabled if id is undefined; enables when id is provided
- */
 export function useIncidentTimelineQuery(id: string | undefined) {
   return useQuery({
     queryKey: ["incident-timeline", id],
@@ -57,10 +45,6 @@ export function useIncidentTimelineQuery(id: string | undefined) {
   });
 }
 
-/**
- * Update incident properties (status, owner, resolution summary, etc.)
- * Invalidates incident-related queries on success to force refresh
- */
 export function useUpdateIncident() {
   const queryClient = useQueryClient();
 
@@ -74,7 +58,6 @@ export function useUpdateIncident() {
     }) => updateIncident(id, request),
 
     onSuccess: async (_, variables) => {
-      // Invalidate queries to refresh the UI
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ["incidents"],
@@ -85,35 +68,36 @@ export function useUpdateIncident() {
         queryClient.invalidateQueries({
           queryKey: ["incident-timeline", variables.id],
         }),
+        queryClient.invalidateQueries({
+          queryKey: ["alerts"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["metrics-summary"],
+        }),
       ]);
     },
   });
 }
 
-/**
- * Append an immutable note to an incident
- * Invalidates incident and timeline queries on success
- */
-export function useCreateIncidentNote() {
+export function useAddIncidentNote() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({
-      incidentId,
+      id,
       request,
     }: {
-      incidentId: string;
+      id: string;
       request: CreateIncidentNoteRequest;
-    }) => createIncidentNote(incidentId, request),
+    }) => addIncidentNote(id, request),
 
     onSuccess: async (_, variables) => {
-      // Invalidate queries to refresh the UI
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: ["incident", variables.incidentId],
+          queryKey: ["incident", variables.id],
         }),
         queryClient.invalidateQueries({
-          queryKey: ["incident-timeline", variables.incidentId],
+          queryKey: ["incident-timeline", variables.id],
         }),
       ]);
     },
