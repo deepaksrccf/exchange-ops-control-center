@@ -14,7 +14,8 @@ public class GeneratorController {
 
   private final SyntheticEventGenerator generator;
 
-  public GeneratorController(SyntheticEventGenerator generator) {
+  public GeneratorController(
+      SyntheticEventGenerator generator) {
     this.generator = generator;
   }
 

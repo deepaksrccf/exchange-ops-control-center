@@ -34,13 +34,14 @@ import org.springframework.stereotype.Service;
 /**
  * Creates synthetic events for the portfolio demonstration.
  *
- * <p>Events are persisted before publication. This generator never connects to a real venue or
- * licensed market-data source.
+ * <p>Events are persisted before publication. This generator never
+ * connects to a real venue or licensed market-data source.
  */
 @Service
 public class SyntheticEventGenerator {
 
-  private static final Logger log = LoggerFactory.getLogger(SyntheticEventGenerator.class);
+  private static final Logger log =
+      LoggerFactory.getLogger(SyntheticEventGenerator.class);
 
   private static final long MINIMUM_INTERVAL_MS = 250L;
   private static final long MAXIMUM_INTERVAL_MS = 60_000L;
@@ -72,9 +73,12 @@ public class SyntheticEventGenerator {
       MarketEventMapper eventMapper,
       SimpMessagingTemplate messagingTemplate,
       Clock clock,
-      @Value("${app.generator.interval-ms:1000}") long intervalMs,
-      @Value("${app.generator.events-per-cycle:1}") int eventsPerCycle,
-      @Value("${app.generator.random-seed:2026}") long randomSeed) {
+      @Value("${app.generator.interval-ms:1000}")
+          long intervalMs,
+      @Value("${app.generator.events-per-cycle:1}")
+          int eventsPerCycle,
+      @Value("${app.generator.random-seed:2026}")
+          long randomSeed) {
 
     validateSettings(intervalMs, eventsPerCycle);
 
@@ -90,12 +94,15 @@ public class SyntheticEventGenerator {
 
     ThreadFactory threadFactory =
         runnable -> {
-          Thread thread = new Thread(runnable, "synthetic-event-generator");
+          Thread thread =
+              new Thread(runnable, "synthetic-event-generator");
           thread.setDaemon(true);
           return thread;
         };
 
-    this.scheduler = Executors.newSingleThreadScheduledExecutor(threadFactory);
+    this.scheduler =
+        Executors.newSingleThreadScheduledExecutor(
+            threadFactory);
   }
 
   public synchronized GeneratorStatusResponse start() {
@@ -109,16 +116,21 @@ public class SyntheticEventGenerator {
       return status();
     }
 
-    lastSequenceNumber.set(eventRepository.maximumSequenceNumber());
+    lastSequenceNumber.set(
+        eventRepository.maximumSequenceNumber());
 
     scheduledTask =
         scheduler.scheduleWithFixedDelay(
-            this::generateSafely, 0, intervalMs, TimeUnit.MILLISECONDS);
+            this::generateSafely,
+            0,
+            intervalMs,
+            TimeUnit.MILLISECONDS);
 
     state = GeneratorState.RUNNING;
 
     log.info(
-        "Synthetic event generator started with intervalMs={} " + "and eventsPerCycle={}",
+        "Synthetic event generator started with intervalMs={} "
+            + "and eventsPerCycle={}",
         intervalMs,
         eventsPerCycle);
 
@@ -170,7 +182,9 @@ public class SyntheticEventGenerator {
     try {
       generateCycle();
     } catch (RuntimeException exception) {
-      log.error("Synthetic event generation cycle failed", exception);
+      log.error(
+          "Synthetic event generation cycle failed",
+          exception);
     }
   }
 
@@ -179,20 +193,28 @@ public class SyntheticEventGenerator {
       return;
     }
 
-    List<Symbol> symbols = symbolRepository.findByActiveOrderByTickerAsc(true);
+    List<Symbol> symbols =
+        symbolRepository.findByActiveOrderByTickerAsc(true);
 
     List<Venue> venues = venueRepository.findAll();
 
     if (symbols.isEmpty() || venues.isEmpty()) {
-      log.warn("Synthetic event generation skipped because reference " + "data is unavailable");
+      log.warn(
+          "Synthetic event generation skipped because reference "
+              + "data is unavailable");
       return;
     }
 
     Map<UUID, Venue> venuesById =
-        venues.stream().collect(java.util.stream.Collectors.toMap(Venue::getId, venue -> venue));
+        venues.stream()
+            .collect(
+                java.util.stream.Collectors.toMap(
+                    Venue::getId,
+                    venue -> venue));
 
     for (int index = 0; index < eventsPerCycle; index++) {
-      Symbol symbol = symbols.get(random.nextInt(symbols.size()));
+      Symbol symbol =
+          symbols.get(random.nextInt(symbols.size()));
 
       Venue venue = venuesById.get(symbol.getVenueId());
 
@@ -200,27 +222,35 @@ public class SyntheticEventGenerator {
         continue;
       }
 
-      MarketEventResponse response = createPersistAndMapEvent(venue, symbol);
+      MarketEventResponse response =
+          createPersistAndMapEvent(venue, symbol);
 
-      messagingTemplate.convertAndSend("/topic/events", response);
+      messagingTemplate.convertAndSend(
+          "/topic/events",
+          response);
 
       generatedCount.incrementAndGet();
     }
   }
 
-  private MarketEventResponse createPersistAndMapEvent(Venue venue, Symbol symbol) {
+  private MarketEventResponse createPersistAndMapEvent(
+      Venue venue,
+      Symbol symbol) {
 
     long sequence = lastSequenceNumber.incrementAndGet();
     Instant eventTimestamp = Instant.now(clock);
 
     long latencyMs = 5L + random.nextInt(175);
-    Instant receivedTimestamp = eventTimestamp.plusMillis(latencyMs);
+    Instant receivedTimestamp =
+        eventTimestamp.plusMillis(latencyMs);
 
     EventType[] eventTypes = EventType.values();
-    EventType eventType = eventTypes[random.nextInt(eventTypes.length)];
+    EventType eventType =
+        eventTypes[random.nextInt(eventTypes.length)];
 
     BigDecimal price =
-        BigDecimal.valueOf(25 + random.nextDouble() * 225).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal.valueOf(25 + random.nextDouble() * 225)
+            .setScale(2, RoundingMode.HALF_UP);
 
     long quantity = 100L + random.nextInt(9_901);
 
@@ -238,16 +268,24 @@ public class SyntheticEventGenerator {
             latencyMs,
             "LIVE-SIM-" + venue.getCode(),
             Map.of(
-                "synthetic", true, "generator", "phase-2", "feedPartition", 1 + random.nextInt(4)));
+                "synthetic", true,
+                "generator", "phase-2",
+                "feedPartition", 1 + random.nextInt(4)));
 
     MarketEvent saved = eventRepository.save(event);
 
-    return eventMapper.toResponse(saved, venue.getCode(), symbol.getTicker());
+    return eventMapper.toResponse(
+        saved,
+        venue.getCode(),
+        symbol.getTicker());
   }
 
-  private static void validateSettings(long intervalMs, int eventsPerCycle) {
+  private static void validateSettings(
+      long intervalMs,
+      int eventsPerCycle) {
 
-    if (intervalMs < MINIMUM_INTERVAL_MS || intervalMs > MAXIMUM_INTERVAL_MS) {
+    if (intervalMs < MINIMUM_INTERVAL_MS
+        || intervalMs > MAXIMUM_INTERVAL_MS) {
 
       throw new IllegalArgumentException(
           "app.generator.interval-ms must be between "
@@ -256,7 +294,8 @@ public class SyntheticEventGenerator {
               + MAXIMUM_INTERVAL_MS);
     }
 
-    if (eventsPerCycle < MINIMUM_EVENTS_PER_CYCLE || eventsPerCycle > MAXIMUM_EVENTS_PER_CYCLE) {
+    if (eventsPerCycle < MINIMUM_EVENTS_PER_CYCLE
+        || eventsPerCycle > MAXIMUM_EVENTS_PER_CYCLE) {
 
       throw new IllegalArgumentException(
           "app.generator.events-per-cycle must be between "

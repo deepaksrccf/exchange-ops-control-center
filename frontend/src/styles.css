@@ -1427,6 +1427,26 @@ textarea:focus-visible {
   padding: 0 10px;
 }
 
+.realtime-indicator {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-small);
+  background: var(--surface-secondary);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 650;
+  padding: 0 10px;
+}
+
+.realtime-indicator span:last-child {
+  min-width: 1.5rem;
+  color: var(--text);
+  text-align: right;
+}
+
 /* Higher-density workstation layout */
 
 .main-content {

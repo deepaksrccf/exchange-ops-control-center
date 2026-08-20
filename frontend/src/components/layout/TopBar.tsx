@@ -4,6 +4,7 @@ import { useLocation } from "react-router-dom";
 import { useApiHealth } from "../../hooks/useOperationsQueries";
 import { queryClient } from "../../api/queryClient";
 import { useThemeStore } from "../../store/themeStore";
+import { RealtimeIndicator } from "../realtime/RealtimeIndicator";
 
 const routeLabels: Record<string, string> = {
   "/": "Operations Overview",
@@ -98,6 +99,8 @@ export function TopBar() {
           />
           <span>{healthLabel}</span>
         </div>
+
+        <RealtimeIndicator />
 
         <button
           type="button"

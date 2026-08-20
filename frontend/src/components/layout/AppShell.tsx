@@ -2,10 +2,13 @@ import { useEffect } from "react";
 import { Outlet } from "react-router-dom";
 
 import { useThemeStore } from "../../store/themeStore";
+import { useRealtimeEvents } from "../../hooks/useRealtimeEvents";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 
 export function AppShell() {
+  useRealtimeEvents();
+
   const collapsed = useThemeStore((state) => state.sidebarCollapsed);
   const mobileOpen = useThemeStore((state) => state.mobileNavigationOpen);
   const closeMobileNavigation = useThemeStore(
