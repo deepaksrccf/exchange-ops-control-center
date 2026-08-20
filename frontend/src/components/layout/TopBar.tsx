@@ -1,10 +1,10 @@
-import { Command, Menu, Moon, RefreshCw, Search, Sun } from "lucide-react";
-import { useLocation } from "react-router-dom";
+import { Command, Menu, Moon, RefreshCw, Sun } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 
-import { useApiHealth } from "../../hooks/useOperationsQueries";
 import { queryClient } from "../../api/queryClient";
 import { useThemeStore } from "../../store/themeStore";
-import { RealtimeIndicator } from "../realtime/RealtimeIndicator";
+import { NotificationCenter } from "../shell/NotificationCenter";
+import { SystemHealthControl } from "../shell/SystemHealthControl";
 
 const routeLabels: Record<string, string> = {
   "/": "Operations Overview",
@@ -13,6 +13,14 @@ const routeLabels: Record<string, string> = {
   "/incidents": "Incident Management",
   "/analytics": "Operations Analytics",
   "/system": "System Status",
+};
+
+const breadcrumbSegments: Record<string, string> = {
+  events: "Event Monitor",
+  alerts: "Alert Queue",
+  incidents: "Incident Management",
+  analytics: "Operations Analytics",
+  system: "System Status",
 };
 
 function getPageLabel(pathname: string): string {
@@ -31,6 +39,24 @@ function getPageLabel(pathname: string): string {
   return "Exchange Operations";
 }
 
+function getBreadcrumbs(
+  pathname: string,
+): Array<{ label: string; to: string }> {
+  const segments = pathname.split("/").filter(Boolean);
+
+  const crumbs = [{ label: "Overview", to: "/" }];
+
+  let path = "";
+
+  for (const segment of segments) {
+    path += `/${segment}`;
+    const label = breadcrumbSegments[segment] ?? "Details";
+    crumbs.push({ label, to: path });
+  }
+
+  return crumbs;
+}
+
 export function TopBar() {
   const location = useLocation();
   const theme = useThemeStore((state) => state.theme);
@@ -39,19 +65,19 @@ export function TopBar() {
     (state) => state.toggleMobileNavigation,
   );
 
-  const healthQuery = useApiHealth();
-  const apiHealthy = healthQuery.data === true;
-
-  let healthLabel = "API unavailable";
-
-  if (healthQuery.isPending) {
-    healthLabel = "Checking API";
-  } else if (apiHealthy) {
-    healthLabel = "API connected";
-  }
+  const breadcrumbs = getBreadcrumbs(location.pathname);
 
   const refreshApplication = async () => {
     await queryClient.invalidateQueries();
+  };
+
+  const openCommandPalette = () => {
+    const event = new KeyboardEvent("keydown", {
+      key: "k",
+      ctrlKey: true,
+      bubbles: true,
+    });
+    window.dispatchEvent(event);
   };
 
   return (
@@ -67,40 +93,41 @@ export function TopBar() {
         </button>
 
         <div className="topbar__page-context">
-          <span>Operations</span>
+          <nav aria-label="Breadcrumb" className="topbar__breadcrumbs">
+            <ol>
+              {breadcrumbs.map((crumb, index) => (
+                <li key={crumb.to}>
+                  {index === breadcrumbs.length - 1 ? (
+                    <span aria-current="page">{crumb.label}</span>
+                  ) : (
+                    <Link to={crumb.to}>{crumb.label}</Link>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </nav>
+
           <strong>{getPageLabel(location.pathname)}</strong>
         </div>
       </div>
 
-      <div className="topbar__search">
-        <Search size={17} aria-hidden="true" />
-        <input
-          type="search"
-          aria-label="Search operations console"
-          placeholder="Search coming in Phase 2"
-          disabled
-        />
-        <kbd>
-          <Command size={13} aria-hidden="true" /> K
-        </kbd>
-      </div>
+      <button
+        type="button"
+        className="topbar__search"
+        onClick={openCommandPalette}
+        aria-label="Open command palette"
+      >
+        <Command size={15} aria-hidden="true" />
+        <span>Command palette</span>
+        <kbd>Ctrl K</kbd>
+      </button>
 
       <div className="topbar__actions">
         <span className="environment-badge">Synthetic Data</span>
 
-        <div className="api-indicator" role="status" aria-live="polite">
-          <span
-            className={
-              apiHealthy
-                ? "status-dot status-dot--healthy"
-                : "status-dot status-dot--unhealthy"
-            }
-            aria-hidden="true"
-          />
-          <span>{healthLabel}</span>
-        </div>
+        <SystemHealthControl />
 
-        <RealtimeIndicator />
+        <NotificationCenter />
 
         <button
           type="button"

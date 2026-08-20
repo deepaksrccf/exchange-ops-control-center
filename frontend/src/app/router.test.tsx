@@ -98,10 +98,12 @@ describe("application router", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText("Synthetic latency threshold exceeded"),
-    ).toBeInTheDocument();
+      screen.getAllByText("Synthetic latency threshold exceeded").length,
+    ).toBeGreaterThan(0);
 
-    expect(screen.getByText("INC-0001")).toBeInTheDocument();
+    expect(
+      screen.getAllByText((content) => content.includes("INC-0001")).length,
+    ).toBeGreaterThan(0);
     expect(screen.getByText("Alpha Exchange")).toBeInTheDocument();
 
     queryClient.clear();

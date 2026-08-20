@@ -1,7 +1,7 @@
 import { Client, type IMessage, type StompSubscription } from "@stomp/stompjs";
-import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 
+import { queryClient } from "../api/queryClient";
 import { useRealtimeStore } from "../store/realtimeStore";
 import type { Alert } from "../types/alerts";
 import type { MetricsSummary } from "../types/api";
@@ -17,9 +17,10 @@ function parseMessage<T>(message: IMessage): T {
   return JSON.parse(message.body) as T;
 }
 
-export function useRealtimeEvents() {
-  const queryClient = useQueryClient();
+const { setConnectionState, recordEvent, recordAlert, recordMetrics } =
+  useRealtimeStore.getState();
 
+export function useRealtimeEvents() {
   const state = useRealtimeStore((current) => current.state);
   const latestEvent = useRealtimeStore((current) => current.latestEvent);
   const latestAlert = useRealtimeStore((current) => current.latestAlert);
@@ -35,20 +36,13 @@ export function useRealtimeEvents() {
   );
   const lastMessageAt = useRealtimeStore((current) => current.lastMessageAt);
   const errorMessage = useRealtimeStore((current) => current.errorMessage);
-  const setConnectionState = useRealtimeStore(
-    (current) => current.setConnectionState,
-  );
-  const recordEvent = useRealtimeStore((current) => current.recordEvent);
-  const recordAlert = useRealtimeStore((current) => current.recordAlert);
-  const recordMetrics = useRealtimeStore((current) => current.recordMetrics);
-
   useEffect(() => {
     setConnectionState("CONNECTING");
 
     const subscriptions: StompSubscription[] = [];
 
     const client = new Client({
-      brokerURL: websocketUrl(),
+      webSocketFactory: () => new WebSocket(websocketUrl()),
       reconnectDelay: 5_000,
       heartbeatIncoming: 10_000,
       heartbeatOutgoing: 10_000,
@@ -57,7 +51,7 @@ export function useRealtimeEvents() {
         ? (message) => {
             console.debug("[STOMP]", message);
           }
-        : undefined,
+        : () => {},
     });
 
     client.onConnect = () => {
@@ -173,13 +167,7 @@ export function useRealtimeEvents() {
       void client.deactivate();
       setConnectionState("DISCONNECTED");
     };
-  }, [
-    queryClient,
-    recordAlert,
-    recordEvent,
-    recordMetrics,
-    setConnectionState,
-  ]);
+  }, []);
 
   return {
     state,
