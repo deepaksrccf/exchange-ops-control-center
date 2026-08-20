@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import type { Alert } from "../types/alerts";
+import type { MetricsSummary } from "../types/api";
 import type { MarketEvent } from "../types/events";
 import type { RealtimeConnectionState } from "../realtime/types";
 
@@ -14,8 +15,10 @@ interface RealtimeStore {
   state: RealtimeConnectionState;
   latestEvent?: MarketEvent;
   latestAlert?: Alert;
+  latestMetrics?: MetricsSummary;
   receivedEventCount: number;
   receivedAlertCount: number;
+  receivedMetricsCount: number;
   lastMessageAt?: string;
   errorMessage?: string;
   notifications: LiveAlertNotification[];
@@ -27,6 +30,7 @@ interface RealtimeStore {
 
   recordEvent: (event: MarketEvent) => void;
   recordAlert: (alert: Alert) => void;
+  recordMetrics: (metrics: MetricsSummary) => void;
   dismissNotification: (notificationId: string) => void;
   clearNotifications: () => void;
   resetRealtimeState: () => void;
@@ -38,6 +42,7 @@ export const useRealtimeStore = create<RealtimeStore>()((set) => ({
   state: "DISCONNECTED",
   receivedEventCount: 0,
   receivedAlertCount: 0,
+  receivedMetricsCount: 0,
   notifications: [],
 
   setConnectionState: (state, errorMessage) =>
@@ -76,6 +81,14 @@ export const useRealtimeStore = create<RealtimeStore>()((set) => ({
       };
     }),
 
+  recordMetrics: (metrics) =>
+    set((current) => ({
+      latestMetrics: metrics,
+      receivedMetricsCount: current.receivedMetricsCount + 1,
+      lastMessageAt: new Date().toISOString(),
+      errorMessage: undefined,
+    })),
+
   dismissNotification: (notificationId) =>
     set((current) => ({
       notifications: current.notifications.filter(
@@ -93,8 +106,10 @@ export const useRealtimeStore = create<RealtimeStore>()((set) => ({
       state: "DISCONNECTED",
       latestEvent: undefined,
       latestAlert: undefined,
+      latestMetrics: undefined,
       receivedEventCount: 0,
       receivedAlertCount: 0,
+      receivedMetricsCount: 0,
       lastMessageAt: undefined,
       errorMessage: undefined,
       notifications: [],

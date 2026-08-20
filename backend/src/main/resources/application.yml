@@ -30,14 +30,12 @@ spring:
         default-page-size: 25
         max-page-size: 200
         one-indexed-parameters: false
-
 server:
   port: ${BACKEND_PORT:8080}
   error:
     include-message: never
     include-stacktrace: never
   shutdown: graceful
-
 management:
   endpoints:
     web:
@@ -47,14 +45,12 @@ management:
     health:
       probes:
         enabled: true
-
 springdoc:
   api-docs:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
     operations-sorter: method
-
 app:
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,http://localhost:4173}
@@ -62,10 +58,14 @@ app:
     interval-ms: ${GENERATOR_INTERVAL_MS:1000}
     events-per-cycle: ${GENERATOR_EVENTS_PER_CYCLE:1}
     random-seed: ${GENERATOR_RANDOM_SEED:2026}
-
+  metrics-broadcast:
+    enabled: ${METRICS_BROADCAST_ENABLED:true}
+    interval-ms: ${METRICS_BROADCAST_INTERVAL_MS:2000}
+    initial-delay-ms: ${METRICS_BROADCAST_INITIAL_DELAY_MS:3000}
 logging:
   level:
     root: INFO
     com.deepak.exchangeops: INFO
   pattern:
-    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX,UTC} %-5level [%thread] %logger{36} - %msg%n"
+    console: '%d{yyyy-MM-dd''T''HH:mm:ss.SSSXXX,UTC} %-5level [%thread] %logger{36}
+      - %msg%n'

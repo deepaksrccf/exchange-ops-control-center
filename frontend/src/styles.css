@@ -2604,3 +2604,129 @@ textarea:focus-visible {
     display: none;
   }
 }
+
+/* Live alert notifications */
+
+.realtime-count {
+  display: inline-grid;
+  min-width: 30px;
+  height: 21px;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 15%, transparent);
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.realtime-count--alert {
+  color: var(--warning);
+}
+
+.live-alert-stack {
+  position: fixed;
+  z-index: 100;
+  top: calc(var(--topbar-height) + 16px);
+  right: 18px;
+  display: grid;
+  width: min(390px, calc(100vw - 30px));
+  gap: 10px;
+  pointer-events: none;
+}
+
+.live-alert-notification {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--warning) 40%, var(--border));
+  border-radius: var(--radius-medium);
+  background: var(--surface);
+  box-shadow: var(--shadow-medium);
+  padding: 14px;
+  pointer-events: auto;
+}
+
+.live-alert-notification header,
+.live-alert-notification__title,
+.live-alert-notification__badges,
+.live-alert-notification a {
+  display: flex;
+  align-items: center;
+}
+
+.live-alert-notification header {
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.live-alert-notification__title {
+  gap: 7px;
+  color: var(--warning);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.live-alert-dismiss {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-small);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.live-alert-dismiss:hover {
+  border-color: var(--border);
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.live-alert-notification__badges {
+  gap: 7px;
+  margin-top: 10px;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.live-alert-notification h2 {
+  margin: 11px 0 4px;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.live-alert-notification p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.live-alert-notification a {
+  justify-content: flex-end;
+  gap: 5px;
+  margin-top: 11px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+@media (max-width: 700px) {
+  .live-alert-stack {
+    top: 70px;
+    right: 10px;
+    left: 10px;
+    width: auto;
+  }
+
+  .realtime-count {
+    display: none;
+  }
+}
+
+.realtime-count--metrics {
+  color: var(--info);
+}

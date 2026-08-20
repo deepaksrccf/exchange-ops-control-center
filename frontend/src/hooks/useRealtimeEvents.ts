@@ -4,6 +4,7 @@ import { useEffect } from "react";
 
 import { useRealtimeStore } from "../store/realtimeStore";
 import type { Alert } from "../types/alerts";
+import type { MetricsSummary } from "../types/api";
 import type { MarketEvent } from "../types/events";
 
 function websocketUrl(): string {
@@ -22,11 +23,15 @@ export function useRealtimeEvents() {
   const state = useRealtimeStore((current) => current.state);
   const latestEvent = useRealtimeStore((current) => current.latestEvent);
   const latestAlert = useRealtimeStore((current) => current.latestAlert);
+  const latestMetrics = useRealtimeStore((current) => current.latestMetrics);
   const receivedEventCount = useRealtimeStore(
     (current) => current.receivedEventCount,
   );
   const receivedAlertCount = useRealtimeStore(
     (current) => current.receivedAlertCount,
+  );
+  const receivedMetricsCount = useRealtimeStore(
+    (current) => current.receivedMetricsCount,
   );
   const lastMessageAt = useRealtimeStore((current) => current.lastMessageAt);
   const errorMessage = useRealtimeStore((current) => current.errorMessage);
@@ -35,6 +40,7 @@ export function useRealtimeEvents() {
   );
   const recordEvent = useRealtimeStore((current) => current.recordEvent);
   const recordAlert = useRealtimeStore((current) => current.recordAlert);
+  const recordMetrics = useRealtimeStore((current) => current.recordMetrics);
 
   useEffect(() => {
     setConnectionState("CONNECTING");
@@ -77,9 +83,6 @@ export function useRealtimeEvents() {
                 queryKey: ["events"],
               }),
               queryClient.invalidateQueries({
-                queryKey: ["metrics-summary"],
-              }),
-              queryClient.invalidateQueries({
                 queryKey: ["analytics", "events"],
               }),
             ]);
@@ -104,9 +107,6 @@ export function useRealtimeEvents() {
                 queryKey: ["alerts"],
               }),
               queryClient.invalidateQueries({
-                queryKey: ["metrics-summary"],
-              }),
-              queryClient.invalidateQueries({
                 queryKey: ["analytics", "alerts"],
               }),
             ]);
@@ -114,6 +114,26 @@ export function useRealtimeEvents() {
             setConnectionState(
               "ERROR",
               "A real-time alert could not be parsed.",
+            );
+          }
+        }),
+      );
+
+      subscriptions.push(
+        client.subscribe("/topic/metrics", (message: IMessage) => {
+          try {
+            const metrics = parseMessage<MetricsSummary>(message);
+
+            recordMetrics(metrics);
+
+            queryClient.setQueryData<MetricsSummary>(
+              ["metrics-summary"],
+              metrics,
+            );
+          } catch {
+            setConnectionState(
+              "ERROR",
+              "A real-time metrics update could not be parsed.",
             );
           }
         }),
@@ -153,14 +173,22 @@ export function useRealtimeEvents() {
       void client.deactivate();
       setConnectionState("DISCONNECTED");
     };
-  }, [queryClient, recordAlert, recordEvent, setConnectionState]);
+  }, [
+    queryClient,
+    recordAlert,
+    recordEvent,
+    recordMetrics,
+    setConnectionState,
+  ]);
 
   return {
     state,
     latestEvent,
     latestAlert,
+    latestMetrics,
     receivedEventCount,
     receivedAlertCount,
+    receivedMetricsCount,
     lastMessageAt,
     errorMessage,
   };

@@ -54,6 +54,13 @@ export function RealtimeIndicator() {
       >
         A {realtime.receivedAlertCount}
       </span>
+
+      <span
+        className="realtime-count realtime-count--metrics"
+        title="Live metrics updates received"
+      >
+        M {realtime.receivedMetricsCount}
+      </span>
     </div>
   );
 }
