@@ -3,6 +3,7 @@ import { Card } from "../components/ui/Card";
 import { LoadingState } from "../components/ui/LoadingState";
 import { useApiHealth, useVenues } from "../hooks/useOperationsQueries";
 import { statusTone } from "../utils/badgeTone";
+import { GeneratorControlPanel } from "../components/realtime/GeneratorControlPanel";
 
 export function SystemPage() {
   const healthQuery = useApiHealth();
@@ -56,6 +57,8 @@ export function SystemPage() {
           ))}
         </div>
       </Card>
+
+      <GeneratorControlPanel />
 
       <Card title="Environment">
         <dl className="definition-list">

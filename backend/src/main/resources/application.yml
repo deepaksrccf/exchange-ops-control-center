@@ -57,7 +57,7 @@ springdoc:
 
 app:
   cors:
-    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,http://localhost:4173}
   generator:
     interval-ms: ${GENERATOR_INTERVAL_MS:1000}
     events-per-cycle: ${GENERATOR_EVENTS_PER_CYCLE:1}
