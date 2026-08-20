@@ -1,27 +1,58 @@
-import { Radio } from "lucide-react";
+import { Radio, RadioTower, Unplug } from "lucide-react";
 
-import { useRealtimeStore } from "../../store/realtimeStore";
+import { useRealtimeEvents } from "../../hooks/useRealtimeEvents";
 
-const labels = {
-  CONNECTING: "Live connecting",
-  CONNECTED: "Live connected",
-  RECONNECTING: "Live reconnecting",
-  DISCONNECTED: "Live disconnected",
-  ERROR: "Live connection error",
-} as const;
+function label(state: string): string {
+  switch (state) {
+    case "CONNECTED":
+      return "Live connected";
+    case "CONNECTING":
+      return "Live connecting";
+    case "RECONNECTING":
+      return "Live reconnecting";
+    case "ERROR":
+      return "Live connection error";
+    default:
+      return "Live disconnected";
+  }
+}
 
 export function RealtimeIndicator() {
-  const connectionState = useRealtimeStore((state) => state.connectionState);
-  const receivedEventCount = useRealtimeStore(
-    (state) => state.receivedEventCount,
-  );
+  const realtime = useRealtimeEvents();
+  const connected = realtime.state === "CONNECTED";
 
   return (
-    <div className="realtime-indicator" role="status" aria-live="polite">
-      <Radio size={15} aria-hidden="true" />
-      <span>{labels[connectionState]}</span>
-      <span aria-label={`${receivedEventCount} events received`}>
-        {receivedEventCount}
+    <div
+      className={[
+        "realtime-indicator",
+        connected
+          ? "realtime-indicator--connected"
+          : "realtime-indicator--disconnected",
+      ].join(" ")}
+      role="status"
+      aria-live="polite"
+      title={realtime.errorMessage}
+    >
+      {connected ? (
+        <RadioTower size={15} aria-hidden="true" />
+      ) : realtime.state === "CONNECTING" ||
+        realtime.state === "RECONNECTING" ? (
+        <Radio size={15} aria-hidden="true" className="icon-pulsing" />
+      ) : (
+        <Unplug size={15} aria-hidden="true" />
+      )}
+
+      <span>{label(realtime.state)}</span>
+
+      <span className="realtime-count" title="Live events received">
+        E {realtime.receivedEventCount}
+      </span>
+
+      <span
+        className="realtime-count realtime-count--alert"
+        title="Live alerts received"
+      >
+        A {realtime.receivedAlertCount}
       </span>
     </div>
   );

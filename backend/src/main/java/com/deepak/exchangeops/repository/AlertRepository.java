@@ -17,4 +17,6 @@ public interface AlertRepository
   long countByStatusAndSeverity(AlertStatus status, AlertSeverity severity);
 
   List<Alert> findTop5ByOrderByDetectedAtDesc();
+
+  boolean existsByRuleIdAndEventId(UUID ruleId, UUID eventId);
 }

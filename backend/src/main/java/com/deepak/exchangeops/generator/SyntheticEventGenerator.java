@@ -10,6 +10,7 @@ import com.deepak.exchangeops.mapper.MarketEventMapper;
 import com.deepak.exchangeops.repository.MarketEventRepository;
 import com.deepak.exchangeops.repository.SymbolRepository;
 import com.deepak.exchangeops.repository.VenueRepository;
+import com.deepak.exchangeops.service.LiveAlertEvaluator;
 import jakarta.annotation.PreDestroy;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -52,6 +53,7 @@ public class SyntheticEventGenerator {
   private final SymbolRepository symbolRepository;
   private final MarketEventMapper eventMapper;
   private final SimpMessagingTemplate messagingTemplate;
+  private final LiveAlertEvaluator liveAlertEvaluator;
   private final Clock clock;
 
   private final long intervalMs;
@@ -71,6 +73,7 @@ public class SyntheticEventGenerator {
       SymbolRepository symbolRepository,
       MarketEventMapper eventMapper,
       SimpMessagingTemplate messagingTemplate,
+      LiveAlertEvaluator liveAlertEvaluator,
       Clock clock,
       @Value("${app.generator.interval-ms:1000}") long intervalMs,
       @Value("${app.generator.events-per-cycle:1}") int eventsPerCycle,
@@ -83,6 +86,7 @@ public class SyntheticEventGenerator {
     this.symbolRepository = symbolRepository;
     this.eventMapper = eventMapper;
     this.messagingTemplate = messagingTemplate;
+    this.liveAlertEvaluator = liveAlertEvaluator;
     this.clock = clock;
     this.intervalMs = intervalMs;
     this.eventsPerCycle = eventsPerCycle;
@@ -200,15 +204,32 @@ public class SyntheticEventGenerator {
         continue;
       }
 
-      MarketEventResponse response = createPersistAndMapEvent(venue, symbol);
+      PersistedEvent persisted =
+          createPersistAndMapEvent(venue, symbol);
 
-      messagingTemplate.convertAndSend("/topic/events", response);
+      try {
+        liveAlertEvaluator.evaluate(
+            persisted.event(),
+            venue,
+            symbol);
+      } catch (RuntimeException exception) {
+        log.error(
+            "Live alert evaluation failed for event {}",
+            persisted.event().getId(),
+            exception);
+      }
+
+      messagingTemplate.convertAndSend(
+          "/topic/events",
+          persisted.response());
 
       generatedCount.incrementAndGet();
     }
   }
 
-  private MarketEventResponse createPersistAndMapEvent(Venue venue, Symbol symbol) {
+  private PersistedEvent createPersistAndMapEvent(
+      Venue venue,
+      Symbol symbol) {
 
     long sequence = lastSequenceNumber.incrementAndGet();
     Instant eventTimestamp = Instant.now(clock);
@@ -242,8 +263,18 @@ public class SyntheticEventGenerator {
 
     MarketEvent saved = eventRepository.save(event);
 
-    return eventMapper.toResponse(saved, venue.getCode(), symbol.getTicker());
+    MarketEventResponse response =
+        eventMapper.toResponse(
+            saved,
+            venue.getCode(),
+            symbol.getTicker());
+
+    return new PersistedEvent(saved, response);
   }
+
+  private record PersistedEvent(
+      MarketEvent event,
+      MarketEventResponse response) {}
 
   private static void validateSettings(long intervalMs, int eventsPerCycle) {
 

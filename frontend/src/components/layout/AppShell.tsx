@@ -5,6 +5,7 @@ import { useThemeStore } from "../../store/themeStore";
 import { useRealtimeEvents } from "../../hooks/useRealtimeEvents";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
+import { LiveAlertNotifications } from "../realtime/LiveAlertNotifications";
 
 export function AppShell() {
   useRealtimeEvents();
@@ -44,6 +45,7 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
+      <LiveAlertNotifications />
     </div>
   );
 }
