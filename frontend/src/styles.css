@@ -2132,3 +2132,128 @@ textarea:focus-visible {
     height: 280px;
   }
 }
+
+/* AG Grid Event Monitor */
+
+.ag-grid-toolbar {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ag-grid-toolbar label {
+  display: grid;
+  min-width: 150px;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ag-grid-search {
+  min-width: min(340px, 100%) !important;
+  flex: 1;
+}
+
+.ag-grid-toolbar input,
+.ag-grid-toolbar select {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--surface-secondary);
+  color: var(--text);
+  padding: 7px 10px;
+  text-transform: none;
+}
+
+.ag-event-grid {
+  width: 100%;
+  height: min(650px, 68vh);
+  min-height: 440px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-medium);
+}
+
+.ag-event-grid .ag-root-wrapper {
+  border: 0;
+  border-radius: var(--radius-medium);
+}
+
+.ag-event-grid .ag-header {
+  border-bottom-color: var(--border);
+}
+
+.ag-event-grid .ag-cell,
+.ag-event-grid .ag-header-cell {
+  font-size: 0.78rem;
+}
+
+.ag-event-grid .ag-row:hover {
+  background: color-mix(in srgb, var(--primary) 7%, transparent);
+}
+
+.ag-cell-number {
+  justify-content: flex-end;
+  font-variant-numeric: tabular-nums;
+}
+
+.ag-latency {
+  justify-content: flex-end;
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+}
+
+.ag-latency--normal {
+  color: var(--success);
+}
+
+.ag-latency--medium {
+  color: var(--warning);
+}
+
+.ag-latency--high {
+  color: var(--danger);
+}
+
+.ag-details-button {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 8px;
+}
+
+.ag-details-button:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+@media (max-width: 700px) {
+  .ag-grid-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ag-grid-toolbar label,
+  .ag-grid-search {
+    width: 100%;
+    min-width: 100% !important;
+  }
+
+  .ag-event-grid {
+    height: 580px;
+    min-height: 480px;
+  }
+}

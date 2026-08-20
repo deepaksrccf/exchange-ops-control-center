@@ -1,5 +1,22 @@
-import { ChevronLeft, ChevronRight, Eye, RefreshCw, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import {
+  AllCommunityModule,
+  themeQuartz,
+  type ColDef,
+  type GridApi,
+  type ICellRendererParams,
+  type SortChangedEvent,
+} from "ag-grid-community";
+import { AgGridProvider, AgGridReact } from "ag-grid-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Eye,
+  RefreshCw,
+  RotateCcw,
+  X,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "../components/ui/Badge";
 import { Card } from "../components/ui/Card";
@@ -8,6 +25,8 @@ import { LoadingState } from "../components/ui/LoadingState";
 import { useEventsQuery } from "../hooks/useEventsQuery";
 import type { EventSort, MarketEvent } from "../types/events";
 import { formatTimestamp } from "../utils/formatters";
+
+const modules = [AllCommunityModule];
 
 const integerFormatter = new Intl.NumberFormat("en-US");
 
@@ -34,16 +53,22 @@ function eventTone(
   }
 }
 
-function latencyTone(latency: number): string {
+function latencyClass(latency: number): string {
   if (latency >= 100) {
-    return "event-latency event-latency--high";
+    return "ag-latency ag-latency--high";
   }
 
   if (latency >= 50) {
-    return "event-latency event-latency--medium";
+    return "ag-latency ag-latency--medium";
   }
 
-  return "event-latency event-latency--normal";
+  return "ag-latency ag-latency--normal";
+}
+
+function sanitizeCsvValue(value: unknown): string {
+  const text = String(value ?? "");
+
+  return /^[+\-=@\t\r]/.test(text) ? `'${text}` : text;
 }
 
 interface EventDetailsProps {
@@ -52,10 +77,10 @@ interface EventDetailsProps {
 }
 
 function EventDetails({ event, onClose }: EventDetailsProps) {
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const closeButton = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    closeButtonRef.current?.focus();
+    closeButton.current?.focus();
 
     function handleKeyDown(keyboardEvent: KeyboardEvent) {
       if (keyboardEvent.key === "Escape") {
@@ -89,12 +114,12 @@ function EventDetails({ event, onClose }: EventDetailsProps) {
           <div>
             <p className="page__eyebrow">Synthetic Event</p>
             <h2 id="event-details-title">
-              Event {integerFormatter.format(event.sequenceNumber)}
+              Sequence {integerFormatter.format(event.sequenceNumber)}
             </h2>
           </div>
 
           <button
-            ref={closeButtonRef}
+            ref={closeButton}
             type="button"
             className="icon-button"
             aria-label="Close event details"
@@ -139,7 +164,7 @@ function EventDetails({ event, onClose }: EventDetailsProps) {
               <dd>{formatTimestamp(event.receivedTimestamp)}</dd>
             </div>
             <div>
-              <dt>Processing latency</dt>
+              <dt>Latency</dt>
               <dd>{event.processingLatencyMs} ms</dd>
             </div>
             <div>
@@ -175,9 +200,13 @@ function EventDetails({ event, onClose }: EventDetailsProps) {
 }
 
 export function EventMonitorPage() {
+  const gridApi = useRef<GridApi<MarketEvent> | null>(null);
+
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(25);
   const [sort, setSort] = useState<EventSort>("eventTimestamp,desc");
+  const [quickFilter, setQuickFilter] = useState("");
+  const [density, setDensity] = useState<"compact" | "comfortable">("compact");
   const [selectedEvent, setSelectedEvent] = useState<MarketEvent | null>(null);
 
   const query = useEventsQuery({
@@ -185,6 +214,167 @@ export function EventMonitorPage() {
     size,
     sort,
   });
+
+  const openDetails = useCallback((event: MarketEvent) => {
+    setSelectedEvent(event);
+  }, []);
+
+  const columnDefs = useMemo<ColDef<MarketEvent>[]>(
+    () => [
+      {
+        field: "sequenceNumber",
+        headerName: "Sequence",
+        width: 130,
+        sort: sort.startsWith("sequenceNumber")
+          ? sort.endsWith("desc")
+            ? "desc"
+            : "asc"
+          : undefined,
+        valueFormatter: ({ value }) =>
+          integerFormatter.format(Number(value ?? 0)),
+        cellClass: "ag-cell-number",
+      },
+      {
+        field: "eventType",
+        headerName: "Type",
+        width: 150,
+        sortable: false,
+        cellRenderer: ({ value }: ICellRendererParams<MarketEvent, string>) => (
+          <Badge tone={eventTone(value ?? "")}>{value ?? "UNKNOWN"}</Badge>
+        ),
+      },
+      {
+        field: "venueCode",
+        headerName: "Venue",
+        width: 110,
+        sortable: false,
+      },
+      {
+        field: "symbolTicker",
+        headerName: "Symbol",
+        width: 115,
+        sortable: false,
+      },
+      {
+        field: "price",
+        headerName: "Price",
+        width: 125,
+        sortable: false,
+        valueFormatter: ({ value }) =>
+          priceFormatter.format(Number(value ?? 0)),
+        cellClass: "ag-cell-number",
+      },
+      {
+        field: "quantity",
+        headerName: "Quantity",
+        width: 125,
+        sortable: false,
+        valueFormatter: ({ value }) =>
+          integerFormatter.format(Number(value ?? 0)),
+        cellClass: "ag-cell-number",
+      },
+      {
+        field: "eventTimestamp",
+        headerName: "Event Time",
+        minWidth: 205,
+        flex: 1,
+        sort: sort.startsWith("eventTimestamp")
+          ? sort.endsWith("desc")
+            ? "desc"
+            : "asc"
+          : undefined,
+        valueFormatter: ({ value }) => formatTimestamp(String(value ?? "")),
+      },
+      {
+        field: "receivedTimestamp",
+        headerName: "Received Time",
+        minWidth: 205,
+        flex: 1,
+        sortable: false,
+        valueFormatter: ({ value }) => formatTimestamp(String(value ?? "")),
+      },
+      {
+        field: "processingLatencyMs",
+        headerName: "Latency",
+        width: 120,
+        sort: sort.startsWith("processingLatencyMs")
+          ? sort.endsWith("desc")
+            ? "desc"
+            : "asc"
+          : undefined,
+        valueFormatter: ({ value }) => `${value ?? 0} ms`,
+        cellClass: ({ value }) => latencyClass(Number(value ?? 0)),
+      },
+      {
+        field: "source",
+        headerName: "Source",
+        width: 150,
+        sortable: false,
+      },
+      {
+        colId: "actions",
+        headerName: "Details",
+        width: 110,
+        sortable: false,
+        filter: false,
+        resizable: false,
+        pinned: "right",
+        cellRenderer: ({ data }: ICellRendererParams<MarketEvent>) =>
+          data ? (
+            <button
+              type="button"
+              className="ag-details-button"
+              aria-label={`View event ${data.sequenceNumber}`}
+              onClick={() => openDetails(data)}
+            >
+              <Eye size={15} aria-hidden="true" />
+              View
+            </button>
+          ) : null,
+      },
+    ],
+    [openDetails, sort],
+  );
+
+  const defaultColumnDefinition = useMemo<ColDef<MarketEvent>>(
+    () => ({
+      sortable: true,
+      filter: true,
+      resizable: true,
+      minWidth: 90,
+    }),
+    [],
+  );
+
+  const handleSort = (event: SortChangedEvent<MarketEvent>) => {
+    const sortedColumn = event.api
+      .getColumnState()
+      .find((column) => column.sort);
+
+    if (!sortedColumn?.sort) {
+      return;
+    }
+
+    const supportedFields = new Set([
+      "eventTimestamp",
+      "sequenceNumber",
+      "processingLatencyMs",
+    ]);
+
+    if (!supportedFields.has(sortedColumn.colId)) {
+      return;
+    }
+
+    setSort(`${sortedColumn.colId},${sortedColumn.sort}` as EventSort);
+    setPage(0);
+  };
+
+  const exportCsv = () => {
+    gridApi.current?.exportDataAsCsv({
+      fileName: "synthetic-exchange-events.csv",
+      processCellCallback: ({ value }) => sanitizeCsvValue(value),
+    });
+  };
 
   if (query.isPending) {
     return <LoadingState message="Loading synthetic events..." />;
@@ -209,11 +399,11 @@ export function EventMonitorPage() {
     <div className="page">
       <header className="page__header event-page-header">
         <div>
-          <p className="page__eyebrow">Operations Monitoring</p>
+          <p className="page__eyebrow">Live Operations Monitoring</p>
           <h1>Event Monitor</h1>
           <p>
-            Review paginated synthetic market events from fictional exchange
-            venues. No real market data is used.
+            Explore persisted synthetic events using a virtualized operations
+            grid. No real market data is used.
           </p>
         </div>
 
@@ -238,24 +428,16 @@ export function EventMonitorPage() {
         </div>
       </header>
 
-      <Card title="Event Controls">
-        <div className="event-toolbar">
-          <label>
-            Sort events
-            <select
-              value={sort}
-              onChange={(event) => {
-                setSort(event.target.value as EventSort);
-                setPage(0);
-              }}
-            >
-              <option value="eventTimestamp,desc">Newest events</option>
-              <option value="eventTimestamp,asc">Oldest events</option>
-              <option value="sequenceNumber,desc">Highest sequence</option>
-              <option value="sequenceNumber,asc">Lowest sequence</option>
-              <option value="processingLatencyMs,desc">Highest latency</option>
-              <option value="processingLatencyMs,asc">Lowest latency</option>
-            </select>
+      <Card title="Grid Controls">
+        <div className="ag-grid-toolbar">
+          <label className="ag-grid-search">
+            Search loaded rows
+            <input
+              type="search"
+              value={quickFilter}
+              placeholder="Venue, symbol, type, source..."
+              onChange={(event) => setQuickFilter(event.target.value)}
+            />
           </label>
 
           <label>
@@ -273,95 +455,82 @@ export function EventMonitorPage() {
             </select>
           </label>
 
-          <div
+          <label>
+            Density
+            <select
+              value={density}
+              onChange={(event) =>
+                setDensity(event.target.value as "compact" | "comfortable")
+              }
+            >
+              <option value="compact">Compact</option>
+              <option value="comfortable">Comfortable</option>
+            </select>
+          </label>
+
+          <button
+            type="button"
+            className="event-action-button"
+            onClick={() => {
+              gridApi.current?.resetColumnState();
+              setQuickFilter("");
+            }}
+          >
+            <RotateCcw size={16} aria-hidden="true" />
+            Reset columns
+          </button>
+
+          <button
+            type="button"
+            className="event-action-button"
+            onClick={exportCsv}
+          >
+            <Download size={16} aria-hidden="true" />
+            Export loaded rows
+          </button>
+
+          <span
             className="event-refresh-status"
             role="status"
             aria-live="polite"
           >
             {query.isFetching
-              ? "Retrieving updated events"
-              : "Event data is current"}
-          </div>
+              ? "Retrieving persisted events"
+              : `${data.content.length} rows loaded`}
+          </span>
         </div>
       </Card>
 
       <Card title="Synthetic Market Events">
-        <div className="event-table-container">
-          <table className="data-table event-table">
-            <caption className="sr-only">
-              Paginated synthetic exchange events
-            </caption>
-
-            <thead>
-              <tr>
-                <th scope="col">Sequence</th>
-                <th scope="col">Type</th>
-                <th scope="col">Venue</th>
-                <th scope="col">Symbol</th>
-                <th scope="col">Price</th>
-                <th scope="col">Quantity</th>
-                <th scope="col">Event time</th>
-                <th scope="col">Latency</th>
-                <th scope="col">Source</th>
-                <th scope="col">Details</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {data.content.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="data-table__empty">
-                    No events were found.
-                  </td>
-                </tr>
-              ) : (
-                data.content.map((marketEvent) => (
-                  <tr key={marketEvent.id}>
-                    <td>
-                      {integerFormatter.format(marketEvent.sequenceNumber)}
-                    </td>
-                    <td>
-                      <Badge tone={eventTone(marketEvent.eventType)}>
-                        {marketEvent.eventType}
-                      </Badge>
-                    </td>
-                    <td>{marketEvent.venueCode}</td>
-                    <td>
-                      <strong>{marketEvent.symbolTicker}</strong>
-                    </td>
-                    <td>{priceFormatter.format(marketEvent.price)}</td>
-                    <td>{integerFormatter.format(marketEvent.quantity)}</td>
-                    <td>{formatTimestamp(marketEvent.eventTimestamp)}</td>
-                    <td>
-                      <span
-                        className={latencyTone(marketEvent.processingLatencyMs)}
-                      >
-                        {marketEvent.processingLatencyMs} ms
-                      </span>
-                    </td>
-                    <td>{marketEvent.source}</td>
-                    <td>
-                      <button
-                        type="button"
-                        className="table-action-button"
-                        aria-label={`View event ${marketEvent.sequenceNumber}`}
-                        onClick={() => setSelectedEvent(marketEvent)}
-                      >
-                        <Eye size={16} aria-hidden="true" />
-                        View
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <div className="ag-event-grid" aria-label="Synthetic market event grid">
+          <AgGridProvider modules={modules}>
+            <AgGridReact<MarketEvent>
+              theme={themeQuartz}
+              rowData={data.content}
+              columnDefs={columnDefs}
+              defaultColDef={defaultColumnDefinition}
+              quickFilterText={quickFilter}
+              cacheQuickFilter
+              rowHeight={density === "compact" ? 36 : 48}
+              headerHeight={density === "compact" ? 40 : 48}
+              rowSelection={{
+                mode: "multiRow",
+              }}
+              suppressMultiSort
+              animateRows={false}
+              getRowId={({ data: event }) => event.id}
+              onGridReady={({ api }) => {
+                gridApi.current = api;
+              }}
+              onSortChanged={handleSort}
+            />
+          </AgGridProvider>
         </div>
 
         <footer className="pagination-bar">
-          <div>
+          <span>
             Page {data.page + 1} of {Math.max(data.totalPages, 1)}
-          </div>
+          </span>
 
           <div className="pagination-bar__actions">
             <button
