@@ -7,10 +7,7 @@ test("loads operational pages and real-time status", async ({ page }) => {
     page.getByRole("heading", { name: "Operations Overview" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("status").filter({ hasText: "API connected" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("status").filter({ hasText: "Live connected" }),
+    page.getByRole("status").filter({ hasText: "All systems normal" }),
   ).toBeVisible();
 
   for (const [linkName, heading] of [

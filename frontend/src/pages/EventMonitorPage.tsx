@@ -2,8 +2,10 @@ import {
   AllCommunityModule,
   themeQuartz,
   type ColDef,
+  type ColumnState,
   type GridApi,
   type ICellRendererParams,
+  type SelectionChangedEvent,
   type SortChangedEvent,
 } from "ag-grid-community";
 import { AgGridProvider, AgGridReact } from "ag-grid-react";
@@ -12,6 +14,8 @@ import {
   ChevronRight,
   Download,
   Eye,
+  PauseCircle,
+  PlayCircle,
   RefreshCw,
   RotateCcw,
   X,
@@ -21,12 +25,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "../components/ui/Badge";
 import { Card } from "../components/ui/Card";
 import { ErrorState } from "../components/ui/ErrorState";
-import { LoadingState } from "../components/ui/LoadingState";
+import { SkeletonTable } from "../components/ui/Skeleton";
 import { useEventsQuery } from "../hooks/useEventsQuery";
-import type { EventSort, MarketEvent } from "../types/events";
+import { useLocalStorageState } from "../hooks/useLocalStorageState";
+import { useRealtimeStore } from "../store/realtimeStore";
+import type { EventPage, EventSort, MarketEvent } from "../types/events";
 import { formatTimestamp } from "../utils/formatters";
 
 const modules = [AllCommunityModule];
+const gridPreferencesKey = "event-monitor-grid-preferences";
+const maxComparisonRows = 4;
 
 const integerFormatter = new Intl.NumberFormat("en-US");
 
@@ -206,8 +214,22 @@ export function EventMonitorPage() {
   const [size, setSize] = useState(25);
   const [sort, setSort] = useState<EventSort>("eventTimestamp,desc");
   const [quickFilter, setQuickFilter] = useState("");
-  const [density, setDensity] = useState<"compact" | "comfortable">("compact");
+  const [gridPreferences, setGridPreferences] = useLocalStorageState<{
+    density: "compact" | "comfortable";
+    columnState: ColumnState[] | null;
+  }>(gridPreferencesKey, { density: "compact", columnState: null });
   const [selectedEvent, setSelectedEvent] = useState<MarketEvent | null>(null);
+  const [selectedRows, setSelectedRows] = useState<MarketEvent[]>([]);
+
+  const [paused, setPaused] = useState(false);
+  const [pausedAtEventCount, setPausedAtEventCount] = useState(0);
+  const [displayData, setDisplayData] = useState<EventPage | undefined>(
+    undefined,
+  );
+
+  const receivedEventCount = useRealtimeStore(
+    (state) => state.receivedEventCount,
+  );
 
   const query = useEventsQuery({
     page,
@@ -215,9 +237,48 @@ export function EventMonitorPage() {
     sort,
   });
 
+  const paginationKey = `${page}-${size}-${sort}`;
+  const lastPaginationKey = useRef(paginationKey);
+  const detailsOpen = selectedEvent !== null;
+
+  useEffect(() => {
+    if (!query.data) {
+      return;
+    }
+
+    const paginationChanged = lastPaginationKey.current !== paginationKey;
+
+    if (!paused && !detailsOpen) {
+      setDisplayData(query.data);
+    } else if (paginationChanged) {
+      setDisplayData(query.data);
+    }
+
+    lastPaginationKey.current = paginationKey;
+  }, [query.data, paused, detailsOpen, paginationKey]);
+
   const openDetails = useCallback((event: MarketEvent) => {
     setSelectedEvent(event);
   }, []);
+
+  const pauseDisplay = () => {
+    setPausedAtEventCount(receivedEventCount);
+    setPaused(true);
+  };
+
+  const resumeDisplay = () => {
+    setPaused(false);
+
+    if (query.data) {
+      setDisplayData(query.data);
+    }
+
+    void query.refetch();
+  };
+
+  const newEventsAvailable = paused
+    ? Math.max(0, receivedEventCount - pausedAtEventCount)
+    : 0;
 
   const columnDefs = useMemo<ColDef<MarketEvent>[]>(
     () => [
@@ -369,6 +430,39 @@ export function EventMonitorPage() {
     setPage(0);
   };
 
+  const persistColumnState = useCallback(
+    (api: GridApi<MarketEvent>) => {
+      setGridPreferences((current) => ({
+        ...current,
+        columnState: api.getColumnState(),
+      }));
+    },
+    [setGridPreferences],
+  );
+
+  const handleSelectionChanged = (
+    event: SelectionChangedEvent<MarketEvent>,
+  ) => {
+    const rows = event.api.getSelectedRows();
+
+    if (rows.length > maxComparisonRows) {
+      const overflowIds = new Set(
+        rows.slice(maxComparisonRows).map((row) => row.id),
+      );
+
+      event.api.forEachNode((node) => {
+        if (node.data && overflowIds.has(node.data.id)) {
+          node.setSelected(false);
+        }
+      });
+
+      setSelectedRows(rows.slice(0, maxComparisonRows));
+      return;
+    }
+
+    setSelectedRows(rows);
+  };
+
   const exportCsv = () => {
     gridApi.current?.exportDataAsCsv({
       fileName: "synthetic-exchange-events.csv",
@@ -377,7 +471,14 @@ export function EventMonitorPage() {
   };
 
   if (query.isPending) {
-    return <LoadingState message="Loading synthetic events..." />;
+    return (
+      <div className="page">
+        <span className="sr-only" role="status">
+          Loading synthetic events...
+        </span>
+        <SkeletonTable rows={8} columns={6} />
+      </div>
+    );
   }
 
   if (query.isError) {
@@ -393,7 +494,18 @@ export function EventMonitorPage() {
     );
   }
 
-  const data = query.data;
+  const data = displayData ?? query.data;
+
+  if (!data) {
+    return (
+      <div className="page">
+        <span className="sr-only" role="status">
+          Loading synthetic events...
+        </span>
+        <SkeletonTable rows={8} columns={6} />
+      </div>
+    );
+  }
 
   return (
     <div className="page">
@@ -425,8 +537,31 @@ export function EventMonitorPage() {
             />
             {query.isFetching ? "Refreshing" : "Refresh"}
           </button>
+
+          <button
+            type="button"
+            className="event-action-button"
+            onClick={paused ? resumeDisplay : pauseDisplay}
+          >
+            {paused ? (
+              <PlayCircle size={17} aria-hidden="true" />
+            ) : (
+              <PauseCircle size={17} aria-hidden="true" />
+            )}
+            {paused ? "Resume Display" : "Pause Display"}
+          </button>
         </div>
       </header>
+
+      {paused && (
+        <p className="operation-feedback" role="status">
+          Display paused. The synthetic generator keeps running in the
+          background.{" "}
+          {newEventsAvailable > 0
+            ? `${newEventsAvailable} new event${newEventsAvailable === 1 ? "" : "s"} available.`
+            : "No new events yet."}
+        </p>
+      )}
 
       <Card title="Grid Controls">
         <div className="ag-grid-toolbar">
@@ -458,9 +593,12 @@ export function EventMonitorPage() {
           <label>
             Density
             <select
-              value={density}
+              value={gridPreferences.density}
               onChange={(event) =>
-                setDensity(event.target.value as "compact" | "comfortable")
+                setGridPreferences((current) => ({
+                  ...current,
+                  density: event.target.value as "compact" | "comfortable",
+                }))
               }
             >
               <option value="compact">Compact</option>
@@ -473,6 +611,10 @@ export function EventMonitorPage() {
             className="event-action-button"
             onClick={() => {
               gridApi.current?.resetColumnState();
+              setGridPreferences((current) => ({
+                ...current,
+                columnState: null,
+              }));
               setQuickFilter("");
             }}
           >
@@ -511,8 +653,8 @@ export function EventMonitorPage() {
               defaultColDef={defaultColumnDefinition}
               quickFilterText={quickFilter}
               cacheQuickFilter
-              rowHeight={density === "compact" ? 36 : 48}
-              headerHeight={density === "compact" ? 40 : 48}
+              rowHeight={gridPreferences.density === "compact" ? 36 : 48}
+              headerHeight={gridPreferences.density === "compact" ? 40 : 48}
               rowSelection={{
                 mode: "multiRow",
               }}
@@ -521,8 +663,23 @@ export function EventMonitorPage() {
               getRowId={({ data: event }) => event.id}
               onGridReady={({ api }) => {
                 gridApi.current = api;
+
+                if (gridPreferences.columnState) {
+                  api.applyColumnState({
+                    state: gridPreferences.columnState,
+                    applyOrder: true,
+                  });
+                }
               }}
               onSortChanged={handleSort}
+              onColumnMoved={({ api }) => persistColumnState(api)}
+              onColumnResized={({ api, finished }) => {
+                if (finished) {
+                  persistColumnState(api);
+                }
+              }}
+              onColumnVisible={({ api }) => persistColumnState(api)}
+              onSelectionChanged={handleSelectionChanged}
             />
           </AgGridProvider>
         </div>
@@ -553,6 +710,59 @@ export function EventMonitorPage() {
           </div>
         </footer>
       </Card>
+
+      {selectedRows.length > 0 && (
+        <Card
+          title="Selected Event Comparison"
+          action={
+            <button
+              type="button"
+              className="event-action-button"
+              onClick={() => {
+                gridApi.current?.deselectAll();
+                setSelectedRows([]);
+              }}
+            >
+              Clear selection
+            </button>
+          }
+        >
+          <p className="analytics-scope-note">
+            Comparing {selectedRows.length} of up to {maxComparisonRows}{" "}
+            selected rows.
+          </p>
+
+          <div className="table-container">
+            <table className="data-table">
+              <caption className="sr-only">Selected event comparison</caption>
+
+              <thead>
+                <tr>
+                  <th scope="col">Sequence</th>
+                  <th scope="col">Event Time</th>
+                  <th scope="col">Received Time</th>
+                  <th scope="col">Latency</th>
+                  <th scope="col">Price</th>
+                  <th scope="col">Quantity</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {selectedRows.map((event) => (
+                  <tr key={event.id}>
+                    <td>{integerFormatter.format(event.sequenceNumber)}</td>
+                    <td>{formatTimestamp(event.eventTimestamp)}</td>
+                    <td>{formatTimestamp(event.receivedTimestamp)}</td>
+                    <td>{event.processingLatencyMs} ms</td>
+                    <td>{priceFormatter.format(event.price)}</td>
+                    <td>{integerFormatter.format(event.quantity)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       {selectedEvent && (
         <EventDetails

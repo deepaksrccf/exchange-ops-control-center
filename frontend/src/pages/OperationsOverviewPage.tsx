@@ -12,8 +12,8 @@ import {
 import { Badge } from "../components/ui/Badge";
 import { Card } from "../components/ui/Card";
 import { ErrorState } from "../components/ui/ErrorState";
-import { LoadingState } from "../components/ui/LoadingState";
 import { MetricCard } from "../components/ui/MetricCard";
+import { PageSkeleton } from "../components/ui/Skeleton";
 import { useAcknowledgeAlert } from "../hooks/useAlerts";
 import {
   useMetricsSummary,
@@ -100,7 +100,7 @@ export function OperationsOverviewPage() {
     incidentsQuery.isPending;
 
   if (isLoading) {
-    return <LoadingState message="Loading operations overview..." />;
+    return <PageSkeleton message="Loading operations overview..." />;
   }
 
   const firstError =

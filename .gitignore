@@ -14,6 +14,9 @@ target/
 node_modules/
 dist/
 coverage/
+frontend/playwright-report/
+frontend/test-results/
+frontend/blob-report/
 *.tsbuildinfo
 npm-debug.log*
 .vite/

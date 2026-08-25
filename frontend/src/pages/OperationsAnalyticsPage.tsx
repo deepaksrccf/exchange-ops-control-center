@@ -5,6 +5,7 @@ import {
   RefreshCw,
   Siren,
 } from "lucide-react";
+import { useState } from "react";
 import {
   Bar,
   BarChart,
@@ -63,6 +64,14 @@ function messageFrom(error: unknown): string {
     : "Unable to load analytics data.";
 }
 
+function datasetLabel(loadedCount: number, totalElements?: number): string {
+  if (totalElements === undefined || loadedCount >= totalElements) {
+    return `Complete dataset: ${loadedCount} record${loadedCount === 1 ? "" : "s"}.`;
+  }
+
+  return `Loaded sample: ${loadedCount} of ${totalElements} records.`;
+}
+
 interface ChartTooltipProps {
   active?: boolean;
   payload?: Array<{
@@ -91,6 +100,11 @@ function ChartTooltip({ active, payload }: ChartTooltipProps) {
 
 export function OperationsAnalyticsPage() {
   const queries = useAnalyticsQueries();
+
+  const [venueFilter, setVenueFilter] = useState("");
+  const [eventTypeFilter, setEventTypeFilter] = useState("");
+  const [severityFilter, setSeverityFilter] = useState("");
+  const [incidentStatusFilter, setIncidentStatusFilter] = useState("");
 
   const isLoading =
     queries.events.isPending ||
@@ -121,32 +135,58 @@ export function OperationsAnalyticsPage() {
   const alerts = queries.alerts.data?.content ?? [];
   const incidents = queries.incidents.data?.content ?? [];
 
-  const eventTypeData = countValues(events.map((event) => event.eventType));
+  const venueOptions = [
+    ...new Set(events.map((event) => event.venueCode)),
+  ].sort();
+  const eventTypeOptions = [
+    ...new Set(events.map((event) => event.eventType)),
+  ].sort();
 
-  const venueData = countValues(events.map((event) => event.venueCode));
+  const filteredEvents = events.filter(
+    (event) =>
+      (!venueFilter || event.venueCode === venueFilter) &&
+      (!eventTypeFilter || event.eventType === eventTypeFilter),
+  );
 
-  const alertSeverityData = countValues(alerts.map((alert) => alert.severity));
+  const filteredAlerts = alerts.filter(
+    (alert) => !severityFilter || alert.severity === severityFilter,
+  );
+
+  const filteredIncidents = incidents.filter(
+    (incident) =>
+      !incidentStatusFilter || incident.status === incidentStatusFilter,
+  );
+
+  const eventTypeData = countValues(
+    filteredEvents.map((event) => event.eventType),
+  );
+
+  const venueData = countValues(filteredEvents.map((event) => event.venueCode));
+
+  const alertSeverityData = countValues(
+    filteredAlerts.map((alert) => alert.severity),
+  );
 
   const incidentStatusData = countValues(
-    incidents.map((incident) => incident.status),
+    filteredIncidents.map((incident) => incident.status),
   );
 
   const averageLatency = average(
-    events.map((event) => event.processingLatencyMs),
+    filteredEvents.map((event) => event.processingLatencyMs),
   );
 
-  const highLatencyEvents = events.filter(
+  const highLatencyEvents = filteredEvents.filter(
     (event) => event.processingLatencyMs >= 100,
   ).length;
 
-  const activeAlerts = alerts.filter(
+  const activeAlerts = filteredAlerts.filter(
     (alert) =>
       alert.status === "OPEN" ||
       alert.status === "ACKNOWLEDGED" ||
       alert.status === "ESCALATED",
   ).length;
 
-  const openIncidents = incidents.filter(
+  const openIncidents = filteredIncidents.filter(
     (incident) =>
       incident.status !== "RESOLVED" && incident.status !== "CLOSED",
   ).length;
@@ -191,6 +231,83 @@ export function OperationsAnalyticsPage() {
         </button>
       </header>
 
+      <Card title="Filters">
+        <div className="alert-filter-grid">
+          <label>
+            Venue
+            <select
+              value={venueFilter}
+              onChange={(event) => setVenueFilter(event.target.value)}
+            >
+              <option value="">All venues</option>
+              {venueOptions.map((venue) => (
+                <option key={venue} value={venue}>
+                  {venue}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Event type
+            <select
+              value={eventTypeFilter}
+              onChange={(event) => setEventTypeFilter(event.target.value)}
+            >
+              <option value="">All event types</option>
+              {eventTypeOptions.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Alert severity
+            <select
+              value={severityFilter}
+              onChange={(event) => setSeverityFilter(event.target.value)}
+            >
+              <option value="">All severities</option>
+              <option value="CRITICAL">Critical</option>
+              <option value="HIGH">High</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="LOW">Low</option>
+              <option value="INFO">Info</option>
+            </select>
+          </label>
+
+          <label>
+            Incident status
+            <select
+              value={incidentStatusFilter}
+              onChange={(event) => setIncidentStatusFilter(event.target.value)}
+            >
+              <option value="">All statuses</option>
+              <option value="OPEN">Open</option>
+              <option value="INVESTIGATING">Investigating</option>
+              <option value="MITIGATED">Mitigated</option>
+              <option value="RESOLVED">Resolved</option>
+              <option value="CLOSED">Closed</option>
+            </select>
+          </label>
+
+          <button
+            type="button"
+            className="event-action-button"
+            onClick={() => {
+              setVenueFilter("");
+              setEventTypeFilter("");
+              setSeverityFilter("");
+              setIncidentStatusFilter("");
+            }}
+          >
+            Reset filters
+          </button>
+        </div>
+      </Card>
+
       <section
         className="analytics-metric-grid"
         aria-label="Loaded operational sample metrics"
@@ -234,6 +351,13 @@ export function OperationsAnalyticsPage() {
 
       <div className="analytics-grid">
         <Card title="Events by Type">
+          <p className="analytics-scope-note">
+            {datasetLabel(
+              filteredEvents.length,
+              queries.events.data?.totalElements,
+            )}
+          </p>
+
           <div
             className="analytics-chart"
             role="img"
@@ -269,6 +393,13 @@ export function OperationsAnalyticsPage() {
         </Card>
 
         <Card title="Events by Synthetic Venue">
+          <p className="analytics-scope-note">
+            {datasetLabel(
+              filteredEvents.length,
+              queries.events.data?.totalElements,
+            )}
+          </p>
+
           <div
             className="analytics-chart"
             role="img"
@@ -305,6 +436,13 @@ export function OperationsAnalyticsPage() {
         </Card>
 
         <Card title="Alert Severity">
+          <p className="analytics-scope-note">
+            {datasetLabel(
+              filteredAlerts.length,
+              queries.alerts.data?.totalElements,
+            )}
+          </p>
+
           <div
             className="analytics-chart"
             role="img"
@@ -339,6 +477,13 @@ export function OperationsAnalyticsPage() {
         </Card>
 
         <Card title="Incident Status">
+          <p className="analytics-scope-note">
+            {datasetLabel(
+              filteredIncidents.length,
+              queries.incidents.data?.totalElements,
+            )}
+          </p>
+
           <div
             className="analytics-chart"
             role="img"

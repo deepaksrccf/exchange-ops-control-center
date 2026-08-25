@@ -38,6 +38,10 @@ export function AppShell() {
         .filter(Boolean)
         .join(" ")}
     >
+      <a className="skip-link" href="#main-content">
+        Skip to main content
+      </a>
+
       <Sidebar />
 
       <div className="app-shell__content">

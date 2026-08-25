@@ -8,11 +8,14 @@ import {
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
+import { AlertDetailContent } from "../components/alerts/AlertDetailContent";
 import { Badge } from "../components/ui/Badge";
 import { Card } from "../components/ui/Card";
+import { EmptyState } from "../components/ui/EmptyState";
 import { ErrorState } from "../components/ui/ErrorState";
 import { LoadingState } from "../components/ui/LoadingState";
 import { useAcknowledgeAlert, useAlertsQuery } from "../hooks/useAlerts";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import type { AlertSeverity, AlertStatus } from "../types/alerts";
 import { severityTone, statusTone } from "../utils/badgeTone";
 import { formatTimestamp } from "../utils/formatters";
@@ -32,6 +35,9 @@ export function AlertQueuePage() {
   const [severity, setSeverity] = useState<AlertSeverity | "">("");
   const [operator, setOperator] = useState("ops.deepak");
   const [feedback, setFeedback] = useState("");
+  const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
+
+  const isDesktop = useMediaQuery("(min-width: 1100px)");
 
   const query = useAlertsQuery({
     page,
@@ -191,115 +197,151 @@ export function AlertQueuePage() {
         )}
       </Card>
 
-      <Card title="Operational Alerts">
-        <div className="event-table-container">
-          <table className="data-table alert-table">
-            <caption className="sr-only">
-              Paginated synthetic operational alerts
-            </caption>
+      <div className={isDesktop ? "alert-queue-layout" : undefined}>
+        <Card title="Operational Alerts">
+          <div className="event-table-container">
+            <table className="data-table alert-table">
+              <caption className="sr-only">
+                Paginated synthetic operational alerts
+              </caption>
 
-            <thead>
-              <tr>
-                <th scope="col">Severity</th>
-                <th scope="col">Status</th>
-                <th scope="col">Alert</th>
-                <th scope="col">Rule</th>
-                <th scope="col">Venue</th>
-                <th scope="col">Symbol</th>
-                <th scope="col">Assigned</th>
-                <th scope="col">Detected</th>
-                <th scope="col">Actions</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {data.content.length === 0 ? (
+              <thead>
                 <tr>
-                  <td colSpan={9} className="data-table__empty">
-                    No alerts match the selected filters.
-                  </td>
+                  <th scope="col">Severity</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Alert</th>
+                  <th scope="col">Rule</th>
+                  <th scope="col">Venue</th>
+                  <th scope="col">Symbol</th>
+                  <th scope="col">Assigned</th>
+                  <th scope="col">Detected</th>
+                  <th scope="col">Actions</th>
                 </tr>
-              ) : (
-                data.content.map((alert) => (
-                  <tr key={alert.id}>
-                    <td>
-                      <Badge tone={severityTone(alert.severity)}>
-                        {alert.severity}
-                      </Badge>
-                    </td>
-                    <td>
-                      <Badge tone={statusTone(alert.status)}>
-                        {alert.status}
-                      </Badge>
-                    </td>
-                    <td>
-                      <Link to={`/alerts/${alert.id}`}>{alert.title}</Link>
-                    </td>
-                    <td>{alert.ruleName}</td>
-                    <td>{alert.venueCode}</td>
-                    <td>
-                      <strong>{alert.symbolTicker}</strong>
-                    </td>
-                    <td>{alert.assignedTo ?? "Unassigned"}</td>
-                    <td>{formatTimestamp(alert.detectedAt)}</td>
-                    <td>
-                      <div className="alert-row-actions">
-                        <Link
-                          className="table-action-button"
-                          to={`/alerts/${alert.id}`}
-                        >
-                          <Eye size={15} aria-hidden="true" />
-                          View
-                        </Link>
+              </thead>
 
-                        {alert.status === "OPEN" && (
-                          <button
-                            type="button"
-                            className="table-action-button"
-                            disabled={
-                              acknowledgeMutation.isPending || !operator.trim()
-                            }
-                            onClick={() => acknowledge(alert.id)}
-                          >
-                            <CheckCircle2 size={15} aria-hidden="true" />
-                            Acknowledge
-                          </button>
-                        )}
-                      </div>
+              <tbody>
+                {data.content.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="data-table__empty">
+                      No alerts match the selected filters.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  data.content.map((alert) => (
+                    <tr key={alert.id}>
+                      <td>
+                        <Badge tone={severityTone(alert.severity)}>
+                          {alert.severity}
+                        </Badge>
+                      </td>
+                      <td>
+                        <Badge tone={statusTone(alert.status)}>
+                          {alert.status}
+                        </Badge>
+                      </td>
+                      <td>
+                        {isDesktop ? (
+                          <button
+                            type="button"
+                            className="link-button"
+                            onClick={() => setSelectedAlertId(alert.id)}
+                          >
+                            {alert.title}
+                          </button>
+                        ) : (
+                          <Link to={`/alerts/${alert.id}`}>{alert.title}</Link>
+                        )}
+                      </td>
+                      <td>{alert.ruleName}</td>
+                      <td>{alert.venueCode}</td>
+                      <td>
+                        <strong>{alert.symbolTicker}</strong>
+                      </td>
+                      <td>{alert.assignedTo ?? "Unassigned"}</td>
+                      <td>{formatTimestamp(alert.detectedAt)}</td>
+                      <td>
+                        <div className="alert-row-actions">
+                          {isDesktop ? (
+                            <button
+                              type="button"
+                              className="table-action-button"
+                              onClick={() => setSelectedAlertId(alert.id)}
+                            >
+                              <Eye size={15} aria-hidden="true" />
+                              View
+                            </button>
+                          ) : (
+                            <Link
+                              className="table-action-button"
+                              to={`/alerts/${alert.id}`}
+                            >
+                              <Eye size={15} aria-hidden="true" />
+                              View
+                            </Link>
+                          )}
 
-        <footer className="pagination-bar">
-          <span>
-            Page {data.page + 1} of {Math.max(data.totalPages, 1)}
-          </span>
-
-          <div className="pagination-bar__actions">
-            <button
-              type="button"
-              disabled={data.first || query.isFetching}
-              onClick={() => setPage((current) => Math.max(0, current - 1))}
-            >
-              <ChevronLeft size={16} aria-hidden="true" />
-              Previous
-            </button>
-
-            <button
-              type="button"
-              disabled={data.last || query.isFetching}
-              onClick={() => setPage((current) => current + 1)}
-            >
-              Next
-              <ChevronRight size={16} aria-hidden="true" />
-            </button>
+                          {alert.status === "OPEN" && (
+                            <button
+                              type="button"
+                              className="table-action-button"
+                              disabled={
+                                acknowledgeMutation.isPending ||
+                                !operator.trim()
+                              }
+                              onClick={() => acknowledge(alert.id)}
+                            >
+                              <CheckCircle2 size={15} aria-hidden="true" />
+                              Acknowledge
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
-        </footer>
-      </Card>
+
+          <footer className="pagination-bar">
+            <span>
+              Page {data.page + 1} of {Math.max(data.totalPages, 1)}
+            </span>
+
+            <div className="pagination-bar__actions">
+              <button
+                type="button"
+                disabled={data.first || query.isFetching}
+                onClick={() => setPage((current) => Math.max(0, current - 1))}
+              >
+                <ChevronLeft size={16} aria-hidden="true" />
+                Previous
+              </button>
+
+              <button
+                type="button"
+                disabled={data.last || query.isFetching}
+                onClick={() => setPage((current) => current + 1)}
+              >
+                Next
+                <ChevronRight size={16} aria-hidden="true" />
+              </button>
+            </div>
+          </footer>
+        </Card>
+
+        {isDesktop && (
+          <div className="alert-queue-layout__detail">
+            {selectedAlertId ? (
+              <AlertDetailContent alertId={selectedAlertId} />
+            ) : (
+              <Card title="Alert Detail">
+                <EmptyState message="Select an alert from the queue to view details." />
+              </Card>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

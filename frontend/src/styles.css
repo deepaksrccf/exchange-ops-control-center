@@ -2246,3 +2246,242 @@ textarea:focus-visible {
     grid-template-columns: 1fr;
   }
 }
+
+/* =========================================================
+   Alert Queue split view
+   ========================================================= */
+
+.link-button {
+  border: 0;
+  background: none;
+  color: var(--primary);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.link-button:hover {
+  text-decoration: underline;
+}
+
+.alert-queue-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.alert-queue-layout__detail {
+  position: sticky;
+  top: calc(var(--topbar-height) + 16px);
+  display: grid;
+  gap: 16px;
+}
+
+.alert-detail-content__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.alert-detail-content__header h2 {
+  margin: 4px 0 6px;
+  font-size: 1.2rem;
+}
+
+/* =========================================================
+   Incident lifecycle stepper and form field validation
+   ========================================================= */
+
+.supporting-message {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.field-error {
+  display: block;
+  margin-top: 4px;
+  color: var(--danger);
+  font-size: 0.75rem;
+}
+
+fieldset.incident-update-form__fields {
+  display: contents;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+fieldset.incident-update-form__fields:disabled label {
+  opacity: 0.6;
+}
+
+.incident-lifecycle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.incident-lifecycle__stage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.incident-lifecycle__stage:not(:last-child)::after {
+  content: "";
+  width: 24px;
+  height: 1px;
+  margin-left: 8px;
+  background: var(--border);
+}
+
+.incident-lifecycle__marker {
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.7rem;
+}
+
+.incident-lifecycle__stage--complete .incident-lifecycle__marker {
+  border-color: var(--success);
+  background: var(--success);
+  color: white;
+}
+
+.incident-lifecycle__stage--complete {
+  color: var(--text-secondary);
+}
+
+.incident-lifecycle__stage--current .incident-lifecycle__marker {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: white;
+}
+
+.incident-lifecycle__stage--current {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* =========================================================
+   Tabs
+   ========================================================= */
+
+.tabs__list {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 16px;
+}
+
+.tabs__tab {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  padding: 8px 12px;
+}
+
+.tabs__tab:hover {
+  color: var(--text);
+}
+
+.tabs__tab--active {
+  border-bottom-color: var(--primary);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.tabs__panel {
+  display: grid;
+  gap: 16px;
+}
+
+/* =========================================================
+   Skeleton loading placeholders
+   ========================================================= */
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.skeleton {
+  display: block;
+  border-radius: var(--radius-xs);
+  background: var(--surface-hover);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.skeleton--line {
+  height: 12px;
+  margin-bottom: 8px;
+}
+
+.skeleton--title {
+  height: 20px;
+  width: 40%;
+}
+
+.skeleton--short {
+  width: 60%;
+}
+
+.skeleton-card {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-medium);
+  background: var(--surface);
+  padding: 16px;
+}
+
+.skeleton-table {
+  display: grid;
+  gap: 10px;
+}
+
+.skeleton-table__row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.skip-link {
+  position: absolute;
+  z-index: 100;
+  top: -48px;
+  left: 12px;
+  border-radius: var(--radius-small);
+  background: var(--primary);
+  color: white;
+  font-size: 0.85rem;
+  padding: 10px 14px;
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+  top: 12px;
+}

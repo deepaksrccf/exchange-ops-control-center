@@ -12,6 +12,7 @@ test.afterEach(async ({ page }) => {
 
 test("controls the synthetic generator lifecycle", async ({ page }) => {
   await page.goto("/system");
+  await page.getByRole("tab", { name: "Simulation" }).click();
   await expect(
     page.getByRole("heading", { name: "Generator Status" }),
   ).toBeVisible();
@@ -34,13 +35,29 @@ test("shows persisted live events and event details", async ({ page }) => {
   await page.goto("/events");
 
   await expect(
-    page.getByRole("status").filter({ hasText: "Live connected" }),
+    page.getByRole("status").filter({ hasText: "All systems normal" }),
   ).toBeVisible();
-  const liveEvents = page.getByTitle("Live events received");
-  await expect(liveEvents).not.toHaveText("E 0", { timeout: 15_000 });
+
+  await page
+    .getByRole("status")
+    .filter({ hasText: "All systems normal" })
+    .click();
+  const eventsReceived = page
+    .getByText("Events received", { exact: true })
+    .locator("xpath=following-sibling::dd[1]");
+  await expect(eventsReceived).not.toHaveText("0", { timeout: 15_000 });
+  await page.getByRole("heading", { name: "Event Monitor" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "System health details" }),
+  ).toBeHidden();
+
   await expect(
     page.getByRole("status").filter({ hasText: /rows loaded/ }),
   ).toBeVisible();
+
+  // Pause Display freezes the grid so live updates cannot move the row
+  // being interacted with.
+  await page.getByRole("button", { name: "Pause Display" }).click();
 
   const detailsButton = page
     .getByRole("button", { name: /^View event / })
@@ -62,11 +79,10 @@ test("opens an alert and acknowledges only an open alert", async ({ page }) => {
     name: "Paginated synthetic operational alerts",
   });
   const viewAlert = alertTable
-    .getByRole("link", { name: "View", exact: true })
+    .getByRole("button", { name: "View", exact: true })
     .first();
   await expect(viewAlert).toBeVisible({ timeout: 15_000 });
   await viewAlert.click();
-  await expect(page).toHaveURL(/\/alerts\/[^/]+$/);
   await expect(
     page.getByRole("heading", { name: "Triage Actions" }),
   ).toBeVisible();

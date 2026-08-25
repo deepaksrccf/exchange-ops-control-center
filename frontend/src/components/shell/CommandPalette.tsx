@@ -254,6 +254,7 @@ export function CommandPalette() {
                   role="option"
                   id={command.id}
                   aria-selected={index === selectedIndex}
+                  aria-label={command.label}
                   className={[
                     "command-palette__option",
                     index === selectedIndex

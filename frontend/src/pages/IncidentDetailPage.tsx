@@ -5,6 +5,7 @@ import { Link, useParams } from "react-router-dom";
 import { Badge } from "../components/ui/Badge";
 import { Card } from "../components/ui/Card";
 import { ErrorState } from "../components/ui/ErrorState";
+import { IncidentLifecycle } from "../components/incidents/IncidentLifecycle";
 import { LoadingState } from "../components/ui/LoadingState";
 import {
   useCreateIncidentNote,
@@ -38,6 +39,7 @@ export function IncidentDetailPage() {
   const [noteAuthor, setNoteAuthor] = useState("ops.deepak");
   const [noteContent, setNoteContent] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [resolutionSummaryError, setResolutionSummaryError] = useState("");
 
   const incident = incidentQuery.data;
 
@@ -73,6 +75,17 @@ export function IncidentDetailPage() {
       return;
     }
 
+    const requiresResolutionSummary =
+      status === "RESOLVED" || status === "CLOSED";
+
+    if (requiresResolutionSummary && !resolutionSummary.trim()) {
+      setResolutionSummaryError(
+        "A resolution summary is required before resolving or closing an incident.",
+      );
+      return;
+    }
+
+    setResolutionSummaryError("");
     setFeedback("");
 
     updateMutation.mutate(
@@ -156,6 +169,17 @@ export function IncidentDetailPage() {
         </div>
       </header>
 
+      <Card title="Lifecycle">
+        <IncidentLifecycle status={incident.status} />
+
+        {incident.status === "CLOSED" && (
+          <p className="supporting-message">
+            This incident is closed. Its status, severity, and resolution can no
+            longer change; investigation notes remain available below.
+          </p>
+        )}
+      </Card>
+
       {feedback && (
         <p className="operation-feedback" role="status">
           {feedback}
@@ -214,72 +238,99 @@ export function IncidentDetailPage() {
 
         <Card title="Update Incident">
           <form className="incident-update-form" onSubmit={update}>
-            <label>
-              Actor
-              <input
-                required
-                value={actor}
-                maxLength={128}
-                pattern="[A-Za-z0-9._-]+"
-                onChange={(event) => setActor(event.target.value)}
-              />
-            </label>
+            <fieldset
+              disabled={incident.status === "CLOSED"}
+              className="incident-update-form__fields"
+            >
+              <label>
+                Actor
+                <input
+                  required
+                  value={actor}
+                  maxLength={128}
+                  pattern="[A-Za-z0-9._-]+"
+                  onChange={(event) => setActor(event.target.value)}
+                />
+              </label>
 
-            <label>
-              Owner
-              <input
-                value={owner}
-                maxLength={128}
-                pattern="[A-Za-z0-9._-]*"
-                onChange={(event) => setOwner(event.target.value)}
-              />
-            </label>
+              <label>
+                Owner
+                <input
+                  value={owner}
+                  maxLength={128}
+                  pattern="[A-Za-z0-9._-]*"
+                  onChange={(event) => setOwner(event.target.value)}
+                />
+              </label>
 
-            <label>
-              Status
-              <select
-                value={status}
-                onChange={(event) =>
-                  setStatus(event.target.value as IncidentStatus)
-                }
-              >
-                <option value="OPEN">Open</option>
-                <option value="INVESTIGATING">Investigating</option>
-                <option value="MITIGATED">Mitigated</option>
-                <option value="RESOLVED">Resolved</option>
-                <option value="CLOSED">Closed</option>
-              </select>
-            </label>
+              <label>
+                Status
+                <select
+                  value={status}
+                  onChange={(event) =>
+                    setStatus(event.target.value as IncidentStatus)
+                  }
+                >
+                  <option value="OPEN">Open</option>
+                  <option value="INVESTIGATING">Investigating</option>
+                  <option value="MITIGATED">Mitigated</option>
+                  <option value="RESOLVED">Resolved</option>
+                  <option value="CLOSED">Closed</option>
+                </select>
+              </label>
 
-            <label>
-              Severity
-              <select
-                value={severity}
-                onChange={(event) =>
-                  setSeverity(event.target.value as IncidentSeverity)
-                }
-              >
-                <option value="SEV1">SEV1</option>
-                <option value="SEV2">SEV2</option>
-                <option value="SEV3">SEV3</option>
-                <option value="SEV4">SEV4</option>
-              </select>
-            </label>
+              <label>
+                Severity
+                <select
+                  value={severity}
+                  onChange={(event) =>
+                    setSeverity(event.target.value as IncidentSeverity)
+                  }
+                >
+                  <option value="SEV1">SEV1</option>
+                  <option value="SEV2">SEV2</option>
+                  <option value="SEV3">SEV3</option>
+                  <option value="SEV4">SEV4</option>
+                </select>
+              </label>
 
-            <label>
-              Resolution summary
-              <textarea
-                rows={4}
-                maxLength={4000}
-                value={resolutionSummary}
-                onChange={(event) => setResolutionSummary(event.target.value)}
-              />
-            </label>
+              <label>
+                Resolution summary
+                <textarea
+                  rows={4}
+                  maxLength={4000}
+                  value={resolutionSummary}
+                  aria-invalid={resolutionSummaryError ? true : undefined}
+                  aria-describedby={
+                    resolutionSummaryError
+                      ? "resolution-summary-error"
+                      : undefined
+                  }
+                  onChange={(event) => {
+                    setResolutionSummary(event.target.value);
+                    if (resolutionSummaryError) {
+                      setResolutionSummaryError("");
+                    }
+                  }}
+                />
+                {resolutionSummaryError && (
+                  <span
+                    id="resolution-summary-error"
+                    className="field-error"
+                    role="alert"
+                  >
+                    {resolutionSummaryError}
+                  </span>
+                )}
+              </label>
+            </fieldset>
 
             <button
               type="submit"
               className="primary-action-button"
-              disabled={updateMutation.isPending}
+              disabled={
+                updateMutation.isPending || incident.status === "CLOSED"
+              }
             >
               <Save size={17} aria-hidden="true" />
               {updateMutation.isPending ? "Saving" : "Save incident"}
